@@ -1,8 +1,9 @@
 """Visualize relationships between UGH3 metric tensors.
 
-This example converts lists of metrics (Q, S, t, PoR, ΔE, grv) into a
-``pandas.DataFrame`` and shows a pairplot and correlation heatmap using
-``seaborn``.
+This simplified example no longer depends on ``pandas`` or ``seaborn`` so it
+can run in minimal environments.  It generates a small random demo tensor of
+metrics and saves a correlation heatmap to ``images/tensor.png`` for inclusion
+in the project README.
 
 Run directly for a demo dataset::
 
@@ -15,46 +16,34 @@ import argparse
 from typing import Iterable
 
 import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
+import numpy as np
 
 
-def metrics_to_df(
+def metrics_matrix(
     q: Iterable[float],
     s: Iterable[float],
     t: Iterable[float],
     por: Iterable[float],
     delta_e: Iterable[float],
     grv: Iterable[float],
-) -> pd.DataFrame:
-    """Return metrics in a ``DataFrame`` for analysis."""
-    return pd.DataFrame(
-        {
-            "Q": list(q),
-            "S": list(s),
-            "t": list(t),
-            "PoR": list(por),
-            "ΔE": list(delta_e),
-            "grv": list(grv),
-        }
-    )
+) -> np.ndarray:
+    """Return metrics stacked as a ``numpy`` array of shape ``(6, N)``."""
+    return np.vstack([list(q), list(s), list(t), list(por), list(delta_e), list(grv)])
 
 
-def plot_relationships(df: pd.DataFrame) -> None:
-    """Show seaborn pairplot and correlation heatmap."""
-    sns.pairplot(df)
-    plt.show()
+def plot_heatmap(data: np.ndarray, labels: list[str]) -> None:
+    """Display a simple correlation heatmap using ``matplotlib``."""
+    corr = np.corrcoef(data)
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(corr, cmap="viridis", vmin=-1.0, vmax=1.0)
+    ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
+    ax.set_yticks(range(len(labels)), labels)
+    fig.colorbar(im, ax=ax, label="corr")
+    fig.tight_layout()
 
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(df.corr(), annot=True, cmap="viridis", vmin=-1.0, vmax=1.0)
-    plt.tight_layout()
-    plt.show()
 
-
-def demo_df(n: int = 20) -> pd.DataFrame:
-    """Generate a small random demo ``DataFrame``."""
-    import numpy as np
-
+def demo_matrix(n: int = 20) -> tuple[np.ndarray, list[str]]:
+    """Return a demo tensor and associated labels."""
     rng = np.random.default_rng(0)
     q = rng.random(n)
     s = rng.random(n)
@@ -62,7 +51,9 @@ def demo_df(n: int = 20) -> pd.DataFrame:
     por = 0.5 * q + 0.4 * s + 0.1 * t
     delta_e = 1.0 - s
     grv = (q + t) / 2
-    return metrics_to_df(q, s, t, por, delta_e, grv)
+    labels = ["Q", "S", "t", "PoR", "ΔE", "grv"]
+    matrix = metrics_matrix(q, s, t, por, delta_e, grv)
+    return matrix, labels
 
 
 def main() -> None:
@@ -72,13 +63,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.demo:
-        df = demo_df()
-    else:
+    if not args.demo:
         raise SystemExit("Only --demo mode is supported in this example.")
 
-    print(df.head())
-    plot_relationships(df)
+    data, labels = demo_matrix()
+    for row in data.T[:5]:
+        print(", ".join(f"{v:.3f}" for v in row))
+
+    plot_heatmap(data, labels)
+    output_path = "images/tensor.png"
+    plt.savefig(output_path)
+    print(f"Saved tensor visualisation to {output_path}")
 
 
 if __name__ == "__main__":
