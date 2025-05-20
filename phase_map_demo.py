@@ -77,7 +77,32 @@ def main() -> None:
     records = generate_dummy_records()
     for r in records:
         ts = datetime.datetime.fromtimestamp(r.timestamp).isoformat(timespec="seconds")
-        print(f"{ts} | PoR: {r.por:.3f} | ΔE: {r.delta_e:.3f} | grv: {r.grv:.3f}")
+        comment_parts = []
+        if r.por > 0.6:
+            comment_parts.append("照合成功")
+        elif r.por >= 0.4:
+            comment_parts.append("PoRやや低め")
+        else:
+            comment_parts.append("照合失敗")
+
+        if r.delta_e < 0.2:
+            comment_parts.append("ΔE安定")
+        elif r.delta_e <= 0.5:
+            comment_parts.append("ΔE変化あり")
+        else:
+            comment_parts.append("ΔE大きな変化")
+
+        if r.grv > 0.7:
+            comment_parts.append("高難度")
+        elif r.grv >= 0.4:
+            comment_parts.append("平均難度")
+        else:
+            comment_parts.append("低難度")
+
+        comment = " / ".join(comment_parts)
+        print(
+            f"{ts} | PoR: {r.por:.3f} | ΔE: {r.delta_e:.3f} | grv: {r.grv:.3f} -> {comment}"
+        )
     plot_records(records)
 
 
