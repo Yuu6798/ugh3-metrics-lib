@@ -119,7 +119,7 @@ def simulate_external_knowledge() -> str:
     return f"[{random.choice(external_concepts)}]"
 
 
-def calc_grv_field(history_list: List[HistoryEntry], window: int = 10) -> Tuple[float, set[str]]:
+def calc_grv_field(history_list: List[HistoryEntry], window: int = GRV_WINDOW) -> Tuple[float, set[str]]:
     recent = history_list[-window:] if len(history_list) >= window else history_list
     vocab_set: set[str] = set()
     for entry in recent:
