@@ -3,13 +3,19 @@
 A lightweight Python library that demonstrates Proof-of-Reserves (PoR) trigger computation, ΔE (delta E) energy scoring, and grv (語彙重力) calculations. These three metrics together offer a simple toolkit for experimenting with reserve verification and vocabulary dynamics.
 
 ## Features
-
-- **PoR trigger calculation** via `por_trigger`
-- **ΔE scoring** with `deltae_score`
-- **grv (語彙重力) score calculation** via `grv_score`
-Together these metrics offer an integrated picture of novelty, energy shifts, and vocabulary growth.
-- Minimal dependencies and easy to integrate
-- Python 3.8+ compatible
+- **deltae_score** from `deltae_scoring.py` - Calculate the difference ``ΔE`` between ``E2`` and ``E1``.
+- **por_trigger** from `design_sketch.py` - Return PoR trigger metrics for the given parameters.
+- **deltae_score** from `design_sketch.py` - Return the ΔE value between two energy readings.
+- **grv_score** from `grv_scoring.py` - Calculate vocabulary gravity (grv) for the given text or list.
+- **load_config** from `por_deltae_grv_collector.py` - Load configuration if present; return empty defaults otherwise.
+- **novelty_score** from `por_deltae_grv_collector.py` - Return novelty score based on maximum similarity to history.
+- **simulate_delta_e** from `por_deltae_grv_collector.py` - Compute ΔE following secl_qa_cycle implementation.
+- ... (9 more functions in `por_deltae_grv_collector.py`)
+- **por_trigger** from `por_trigger.py` - Calculate whether a PoR event should be triggered.
+- **load_config** from `secl_qa_cycle.py` - Load configuration parameters from a JSON file.
+- **novelty_score** from `secl_qa_cycle.py`
+- **is_duplicate_question** from `secl_qa_cycle.py`
+- ... (21 more functions in `secl_qa_cycle.py`)
 
 ## Requirements
 
@@ -30,21 +36,18 @@ git clone https://github.com/Yuu6798/por-deltae-lib.git
 ```
 
 ## Quick Start
-
 ```python
-from por_trigger import por_trigger
 from deltae_scoring import deltae_score
+from design_sketch import por_trigger
+from design_sketch import deltae_score
 from grv_scoring import grv_score
-
-# Quick PoR check
-result = por_trigger(q=1.0, s=0.9, t=1.2, phi_C=1.05, D=0.1)
-print(result)
-
-# Simple ΔE calculation
-print(deltae_score(E1=10.0, E2=12.5))
-
-# Vocabulary gravity
-print(grv_score("AIは問いに答える存在です"))
+from por_deltae_grv_collector import load_config
+from por_deltae_grv_collector import novelty_score
+from por_deltae_grv_collector import simulate_delta_e
+from por_trigger import por_trigger
+from secl_qa_cycle import load_config
+from secl_qa_cycle import novelty_score
+from secl_qa_cycle import is_duplicate_question
 ```
 
 ## Usage
