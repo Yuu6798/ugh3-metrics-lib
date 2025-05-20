@@ -1,11 +1,13 @@
 # PoR ΔE Library
 
-A lightweight Python library that demonstrates Proof-of-Reserves (PoR) trigger computation and ΔE (delta E) energy scoring. The project offers straightforward functions for experimentation with reserve verification models.
+A lightweight Python library that demonstrates Proof-of-Reserves (PoR) trigger computation, ΔE (delta E) energy scoring, and grv (語彙重力) calculations. These three metrics together offer a simple toolkit for experimenting with reserve verification and vocabulary dynamics.
 
 ## Features
 
 - **PoR trigger calculation** via `por_trigger`
 - **ΔE scoring** with `deltae_score`
+- **grv (語彙重力) score calculation** via `grv_score`
+Together these metrics offer an integrated picture of novelty, energy shifts, and vocabulary growth.
 - Minimal dependencies and easy to integrate
 - Python 3.8+ compatible
 
@@ -32,6 +34,7 @@ git clone https://github.com/Yuu6798/por-deltae-lib.git
 ```python
 from por_trigger import por_trigger
 from deltae_scoring import deltae_score
+from grv_scoring import grv_score
 
 # Quick PoR check
 result = por_trigger(q=1.0, s=0.9, t=1.2, phi_C=1.05, D=0.1)
@@ -39,22 +42,28 @@ print(result)
 
 # Simple ΔE calculation
 print(deltae_score(E1=10.0, E2=12.5))
+
+# Vocabulary gravity
+print(grv_score("AIは問いに答える存在です"))
 ```
 
 ## Usage
 
-The `por_trigger` function returns a dictionary with the intermediate score and a boolean indicating whether the PoR threshold was exceeded. `deltae_score` simply returns the difference between two energy values.
+The `por_trigger` function returns a dictionary with the intermediate score and a boolean indicating whether the PoR threshold was exceeded. `deltae_score` simply returns the difference between two energy values. `grv_score` counts unique vocabulary items and normalizes the result.
 
 ```python
 from por_trigger import por_trigger
+from grv_scoring import grv_score
 from deltae_scoring import deltae_score
 
 metrics = por_trigger(q=0.8, s=0.95, t=1.1, phi_C=1.02, D=0.05, theta=0.6)
 if metrics["triggered"]:
     print("PoR event triggered!", metrics)
 
-energy_gap = deltae_score(E1=8.0, E2=9.5)
+energy_gap = deltae_score(E1=10.0, E2=12.5)
 print("ΔE:", energy_gap)
+qa_history = ["質問1 応答1", "質問2 応答2"]
+print(grv_score(qa_history))
 ```
 
 ## API Reference
@@ -88,10 +97,22 @@ Computes `E2 - E1`.
 **Returns**
 - The difference `E2 - E1`
 
+### `grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float`
+
+Counts unique vocabulary items in the provided text(s) and returns `min(1.0, vocab_size / vocab_limit)`.
+
+**Parameters**
+- `text` – single string or list of strings to analyze
+- `vocab_limit` – normalization denominator (default `30`)
+
+**Returns**
+- Normalized vocabulary gravity value
+
 ## Project Structure
 
 - `por_trigger.py` – PoR trigger implementation
 - `deltae_scoring.py` – ΔE scoring helper
+- `grv_scoring.py` – grv score helper
 - `design_sketch.py` – simplified reference code
 - `spec.md` – specification outline (currently empty)
 - `pyproject.toml` – packaging metadata
