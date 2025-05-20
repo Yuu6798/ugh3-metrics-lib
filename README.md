@@ -50,6 +50,20 @@ from grv_scoring import grv_score
 
 <!-- AUTO SECTION END -->
 
+### Visualization Utilities / 可視化用ユーティリティ
+`phase_map_heatmap.py` ではメトリクス履歴をヒートマップとして描画し、
+`visualize_tensor.py` は保存されたテンソルデータを画像化します。
+
+```bash
+python phase_map_heatmap.py --csv metrics.csv
+python visualize_tensor.py tensor.npy
+```
+
+生成される図は `images/phase_map.png` や `images/tensor.png` に保存されます。
+
+![Phase Map](images/phase_map.png)
+![Tensor](images/tensor.png)
+
 ## UGH3 Metrics 指標定義
 このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
 
