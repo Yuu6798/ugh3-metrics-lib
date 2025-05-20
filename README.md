@@ -59,15 +59,16 @@ from grv_scoring import grv_score
 <!-- AUTO SECTION END -->
 
 ### Visualization Utilities / 可視化用ユーティリティ
-`phase_map_heatmap.py` ではメトリクス履歴をヒートマップとして描画し、
-`visualize_tensor.py` は保存されたテンソルデータを画像化します。
+
+`phase_map_heatmap.py` ではメトリクス履歴をヒートマップとして描画します。
+`visualize_tensor.py` はデモ用テンソルを生成して可視化します。
 
 ```bash
-python phase_map_heatmap.py --csv metrics.csv
-python visualize_tensor.py tensor.npy
+python examples/phase_map_heatmap.py
+python examples/visualize_tensor.py --demo
 ```
 
-生成される図は `images/phase_map.png` や `images/tensor.png` に保存されます。
+生成結果の一例を `images/phase_map.png` と `images/tensor.png` に掲載しています。
 
 ![Phase Map](images/phase_map.png)
 ![Tensor](images/tensor.png)
@@ -99,7 +100,6 @@ python visualize_tensor.py tensor.npy
 \]
 ※ 各項目は0.0〜1.0で正規化された評価スコア。
 
-<!-- TODO: 3指標の関係を図示したイメージを追加する -->
 
 ## 評価基準
 各指標は0.0〜1.0で数値が大きいほど強い影響を示します。一般的な解釈の目安を
