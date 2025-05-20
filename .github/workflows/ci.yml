@@ -15,5 +15,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -v -r requirements.txt
+      - name: Sanity-check deps
+        run: |
+          test -f requirements.txt || { echo "❌ requirements.txt not found"; exit 1; }
+          python - <<'PY'
+          import importlib, sys
+          for pkg in ("matplotlib", "pytest"):
+              try:
+                  m = importlib.import_module(pkg)
+                  print(f"[OK] {pkg} {m.__version__}")
+              except ModuleNotFoundError:
+                  print(f"❌  {pkg} NOT INSTALLED")
+                  sys.exit(1)
+          PY
       - run: python -c "import matplotlib"
       - run: pytest -q
