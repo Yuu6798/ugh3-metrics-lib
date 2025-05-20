@@ -1,131 +1,80 @@
-# PoR ΔE Library
+# ugh3-metrics-lib
 
-A lightweight Python library that demonstrates Proof-of-Reserves (PoR) trigger computation, ΔE (delta E) energy scoring, and grv (語彙重力) calculations. These three metrics together offer a simple toolkit for experimenting with reserve verification and vocabulary dynamics.
+UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE open source library and reference implementation).
+本リポジトリはPoR (Proof of Resonance) やΔE (存在エネルギー差)、grv (語彙重力) といった指標をPythonから簡単に計算するためのツール集です。
 
-## Features
+## 概要 / Overview
+UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
 
-- **PoR trigger calculation** via `por_trigger`
-- **ΔE scoring** with `deltae_score`
-- **grv (語彙重力) score calculation** via `grv_score`
-Together these metrics offer an integrated picture of novelty, energy shifts, and vocabulary growth.
-- Minimal dependencies and easy to integrate
-- Python 3.8+ compatible
+## Features / 特徴
+- PoR（共鳴点）トリガー計算
+- ΔE（存在エネルギー差）スコア計算
+- grv（語彙重力）メトリクス計算
+- 最小限の依存関係でシンプル
+- Python 3.8+対応
 
-## Requirements
-
-- Python 3.8 or higher
-
-## Installation
-
-Install directly from GitHub using `pip`:
-
+## Installation / インストール
 ```bash
-pip install git+https://github.com/Yuu6798/por-deltae-lib.git
+pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
+# または
+git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 ```
 
-Alternatively, clone the repository:
-
-```bash
-git clone https://github.com/Yuu6798/por-deltae-lib.git
-```
-
-## Quick Start
-
+## Quick Start / クイックスタート
 ```python
 from por_trigger import por_trigger
 from deltae_scoring import deltae_score
 from grv_scoring import grv_score
 
-# Quick PoR check
-result = por_trigger(q=1.0, s=0.9, t=1.2, phi_C=1.05, D=0.1)
+result = por_trigger(q=1.0, s=0.9, t=0.8, phi_C=1.05, D=0.1)
 print(result)
-
-# Simple ΔE calculation
 print(deltae_score(E1=10.0, E2=12.5))
-
-# Vocabulary gravity
 print(grv_score("AIは問いに答える存在です"))
 ```
 
-## Usage
+## Usage / 使い方
+`por_trigger` はPoRイベント発生可否を示す辞書を返します。`deltae_score` はエネルギー差、`grv_score` は語彙の広がりを数値化します。詳細なAPI仕様は各モジュールのドキュメントを参照してください。
 
-The `por_trigger` function returns a dictionary with the intermediate score and a boolean indicating whether the PoR threshold was exceeded. `deltae_score` simply returns the difference between two energy values. `grv_score` counts unique vocabulary items and normalizes the result.
+## UGH3 Metrics 指標定義
+このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
 
-```python
-from por_trigger import por_trigger
-from grv_scoring import grv_score
-from deltae_scoring import deltae_score
+### 1. PoR（Point of Resonance）
+- **定義：** 照合強度のスコア。問いと応答の意味的整合性・圧力・時間的同期性を反映。
+- **数式：**
+\[
+  S = \max \left\{ \text{semantic\_similarity}(Q, Q'_i) \right\}
+\]
+※ 履歴内の問い $Q'_i$ と新しい問い $Q$ の意味的類似度の最大値。
 
-metrics = por_trigger(q=0.8, s=0.95, t=1.1, phi_C=1.02, D=0.05, theta=0.6)
-if metrics["triggered"]:
-    print("PoR event triggered!", metrics)
+### 2. ΔE（デルタE）
+- **定義：** 応答出力の変化度。直前の応答と比較した意味的変動量。
+- **数式：**
+\[
+  \Delta E = 1 - \text{semantic\_similarity}(A, A_{\text{prev}})
+\]
+※ 応答 $A$ と直前応答 $A_{prev}$ の類似度との差分。
 
-energy_gap = deltae_score(E1=10.0, E2=12.5)
-print("ΔE:", energy_gap)
-qa_history = ["質問1 応答1", "質問2 応答2"]
-print(grv_score(qa_history))
-```
+### 3. grv（語彙重力）
+- **定義：** 語彙空間の抽象性・難解性・本質度の平均によって語彙的“重み”を測定。
+- **数式：**
+\[
+  \text{Grv} = \frac{\text{抽象度} + \text{本質度} + \text{難解度}}{3}
+\]
+※ 各項目は0.0〜1.0で正規化された評価スコア。
 
-## API Reference
+<!-- TODO: 3指標の関係を図示したイメージを追加する -->
+## Project Structure / プロジェクト構成
+- `por_trigger.py` – PoRトリガー計算
+- `deltae_scoring.py` – ΔEスコア計算
+- `grv_scoring.py` – grvメトリクス計算
+- `secl_qa_cycle.py` – メトリクスを使用したQ&Aサイクル例
+- `tests/` – ユニットテスト
 
-### `por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict`
+## Contribution / コントリビュート
+改善提案やバグ報告はPull RequestまたはIssueでお願いします。
 
-Calculates whether a PoR event should be triggered.
+## License / ライセンス
+MIT License
 
-**Parameters**
-- `q` – quantity factor for reserves
-- `s` – sensitivity factor
-- `t` – time factor
-- `phi_C` – scoring coefficient
-- `D` – distortion factor
-- `theta` – trigger threshold (default `0.6`)
-
-**Returns**
-A dictionary containing:
-- `"E_prime"` – intermediate energy metric
-- `"score"` – calculated score
-- `"triggered"` – `True` if the threshold is exceeded
-
-### `deltae_score(E1: float, E2: float) -> float`
-
-Computes `E2 - E1`.
-
-**Parameters**
-- `E1` – first energy value
-- `E2` – second energy value
-
-**Returns**
-- The difference `E2 - E1`
-
-### `grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float`
-
-Counts unique vocabulary items in the provided text(s) and returns `min(1.0, vocab_size / vocab_limit)`.
-
-**Parameters**
-- `text` – single string or list of strings to analyze
-- `vocab_limit` – normalization denominator (default `30`)
-
-**Returns**
-- Normalized vocabulary gravity value
-
-## Project Structure
-
-- `por_trigger.py` – PoR trigger implementation
-- `deltae_scoring.py` – ΔE scoring helper
-- `grv_scoring.py` – grv score helper
-- `design_sketch.py` – simplified reference code
-- `spec.md` – specification outline (currently empty)
-- `pyproject.toml` – packaging metadata
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues or submit pull requests.
-
-## Contact
-
-Questions or suggestions? Reach out to [Yuu6798](https://github.com/Yuu6798).
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
+## Contact / 連絡先
+ご質問や要望はGitHub Issueよりご連絡ください。
