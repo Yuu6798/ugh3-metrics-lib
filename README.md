@@ -35,6 +35,21 @@ print(grv_score("AIは問いに答える存在です"))
 ## Usage / 使い方
 `por_trigger` はPoRイベント発生可否を示す辞書を返します。`deltae_score` はエネルギー差、`grv_score` は語彙の広がりを数値化します。詳細なAPI仕様は各モジュールのドキュメントを参照してください。
 
+<!-- AUTO SECTION START -->
+### Import Examples / インポート例
+```python
+from por_trigger import por_trigger
+from deltae_scoring import deltae_score
+from grv_scoring import grv_score
+```
+
+### Function Overview / 関数概要
+- `por_trigger(q, s, t, phi_C, D, *, theta=0.6) -> dict`
+- `deltae_score(E1, E2) -> float`
+- `grv_score(text, *, vocab_limit=30) -> float`
+
+<!-- AUTO SECTION END -->
+
 ## UGH3 Metrics 指標定義
 このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
 
@@ -63,11 +78,13 @@ print(grv_score("AIは問いに答える存在です"))
 ※ 各項目は0.0〜1.0で正規化された評価スコア。
 
 <!-- TODO: 3指標の関係を図示したイメージを追加する -->
-## Project Structure / プロジェクト構成
+## Script Structure / スクリプト構成
 - `por_trigger.py` – PoRトリガー計算
 - `deltae_scoring.py` – ΔEスコア計算
 - `grv_scoring.py` – grvメトリクス計算
 - `secl_qa_cycle.py` – メトリクスを使用したQ&Aサイクル例
+- `por_deltae_grv_collector.py` – 簡易データ収集CLI
+- `design_sketch.py` – コア計算のリファレンス実装
 - `tests/` – ユニットテスト
 
 ## Contribution / コントリビュート
