@@ -40,15 +40,21 @@ def metrics_to_df(
     )
 
 
-def plot_relationships(df: pd.DataFrame) -> None:
-    """Show seaborn pairplot and correlation heatmap."""
-    sns.pairplot(df)
+def plot_relationships(df: pd.DataFrame, save_path: str = "images/tensor.png") -> None:
+    """Show seaborn pairplot and correlation heatmap and save the result."""
+    # pairplot returns a ``FacetGrid`` so we can save the figure directly
+    g = sns.pairplot(df)
+    g.figure.tight_layout()
     plt.show()
 
     plt.figure(figsize=(8, 6))
     sns.heatmap(df.corr(), annot=True, cmap="viridis", vmin=-1.0, vmax=1.0)
     plt.tight_layout()
+    # Save the last active figure which contains the heatmap
+    plt.savefig(save_path)
+    print(f"Saved plot to {save_path}")
     plt.show()
+    plt.close("all")
 
 
 def demo_df(n: int = 20) -> pd.DataFrame:
@@ -70,6 +76,12 @@ def main() -> None:
     parser.add_argument(
         "--demo", action="store_true", help="Use a randomly generated dataset"
     )
+    parser.add_argument(
+        "--out",
+        type=str,
+        default="images/tensor.png",
+        help="Path to save the generated figure",
+    )
     args = parser.parse_args()
 
     if args.demo:
@@ -78,7 +90,7 @@ def main() -> None:
         raise SystemExit("Only --demo mode is supported in this example.")
 
     print(df.head())
-    plot_relationships(df)
+    plot_relationships(df, args.out)
 
 
 if __name__ == "__main__":
