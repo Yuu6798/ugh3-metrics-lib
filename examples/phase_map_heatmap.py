@@ -8,9 +8,12 @@ plots them using ``matplotlib.imshow``. The resulting image is saved to
 """
 
 from dataclasses import dataclass
+import argparse
 import random
 import time
 from typing import List
+
+import pandas as pd
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,6 +33,23 @@ def generate_dummy_history(n: int = 20) -> List[PorRecord]:
     history: List[PorRecord] = []
     for i in range(n):
         history.append(PorRecord(base_ts + i * 60, random.uniform(0.0, 1.0)))
+    return history
+
+
+def load_history_from_csv(path: str) -> List[PorRecord]:
+    """Return ``PorRecord`` entries loaded from ``path``."""
+    df = pd.read_csv(path)
+    col = None
+    for name in ("PoR", "por", "por_score"):
+        if name in df.columns:
+            col = df[name]
+            break
+    if col is None:
+        raise ValueError("CSV must contain a PoR column")
+    base_ts = time.time()
+    history: List[PorRecord] = []
+    for i, por_val in enumerate(col):
+        history.append(PorRecord(base_ts + i * 60, float(por_val)))
     return history
 
 
@@ -53,7 +73,20 @@ def plot_heatmap(history: List[PorRecord]) -> None:
 
 
 def main() -> None:
-    history = generate_dummy_history()
+    parser = argparse.ArgumentParser(
+        description="Generate a phase map heatmap from PoR values"
+    )
+    parser.add_argument(
+        "--csv",
+        metavar="PATH",
+        help="Load PoR values from CSV instead of generating random data",
+    )
+    args = parser.parse_args()
+
+    if args.csv:
+        history = load_history_from_csv(args.csv)
+    else:
+        history = generate_dummy_history()
     plot_heatmap(history)
     output_path = "images/phase_map.png"
     plt.savefig(output_path)
