@@ -112,7 +112,15 @@ from grv_scoring import grv_score
 - `secl_qa_cycle.py` – メトリクスを使用したQ&Aサイクル例
 - `por_deltae_grv_collector.py` – 簡易データ収集CLI
 - `design_sketch.py` – コア計算のリファレンス実装
+- `examples/phase_map_heatmap.py` – PoRフェーズヒートマップ例
 - `tests/` – ユニットテスト
+
+### Phase Map Heatmap Example
+The `examples/phase_map_heatmap.py` script generates a simple heatmap of
+PoR scores over time. Running the script will save an image to
+`images/phase_map.png`:
+
+![Phase Map](images/phase_map.png)
 
 ## Contribution / コントリビュート
 改善提案やバグ報告はPull RequestまたはIssueでお願いします。
