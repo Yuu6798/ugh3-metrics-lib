@@ -4,8 +4,9 @@ This example converts lists of metrics (Q, S, t, PoR, ΔE, grv) into a
 ``pandas.DataFrame`` and shows a pairplot and correlation heatmap using
 ``seaborn``.
 
-Run directly for a demo dataset::
+Run directly with a saved tensor or generate a demo dataset::
 
+    python examples/visualize_tensor.py tensor.npy
     python examples/visualize_tensor.py --demo
 """
 
@@ -65,8 +66,30 @@ def demo_df(n: int = 20) -> pd.DataFrame:
     return metrics_to_df(q, s, t, por, delta_e, grv)
 
 
+def df_from_file(path: str) -> pd.DataFrame:
+    """Load metric tensor data from ``path``."""
+    import numpy as np
+
+    if path.lower().endswith((".npy", ".npz")):
+        arr = np.load(path)
+        if hasattr(arr, "files"):
+            # npz file - take first array
+            arr = arr[arr.files[0]]
+        df = pd.DataFrame(
+            arr, columns=["Q", "S", "t", "PoR", "ΔE", "grv"]
+        )
+        return df
+    df = pd.read_csv(path)
+    return df
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Visualize UGH3 metric tensor")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="File containing tensor data (.npy or CSV)",
+    )
     parser.add_argument(
         "--demo", action="store_true", help="Use a randomly generated dataset"
     )
@@ -75,7 +98,9 @@ def main() -> None:
     if args.demo:
         df = demo_df()
     else:
-        raise SystemExit("Only --demo mode is supported in this example.")
+        if not args.path:
+            parser.error("the following arguments are required: path")
+        df = df_from_file(args.path)
 
     print(df.head())
     plot_relationships(df)
