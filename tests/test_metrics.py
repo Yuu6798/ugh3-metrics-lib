@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 
 from secl_qa_cycle import novelty_score, is_duplicate_question, HistoryEntry
