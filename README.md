@@ -32,6 +32,14 @@ print(deltae_score(E1=10.0, E2=12.5))
 print(grv_score("AIは問いに答える存在です"))
 ```
 
+## Examples / 実行例
+実際の指標計算フローは `examples/ugh3_metrics_demo.ipynb` を参照してください。サンプルデータから PoR, ΔE, grv を計算し可視化します。実行例:
+```
+step 1: PoR=0.756 triggered=True ΔE=2.500 grv=0.067
+step 2: PoR=0.416 triggered=False ΔE=0.600 grv=0.033
+step 3: PoR=0.912 triggered=True ΔE=0.900 grv=0.033
+```
+
 ## Usage / 使い方
 `por_trigger` はPoRイベント発生可否を示す辞書を返します。`deltae_score` はエネルギー差、`grv_score` は語彙の広がりを数値化します。詳細なAPI仕様は各モジュールのドキュメントを参照してください。
 
