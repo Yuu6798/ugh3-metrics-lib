@@ -72,6 +72,17 @@ def grv_score(answer: str) -> float:
     return grv_scoring.grv_score(answer)
 
 
+def evaluate_metrics(por: float, delta_e: float, grv: float, *, threshold: float = 0.5) -> tuple[float, bool]:
+    """Return aggregate score and adoption decision for the metrics.
+
+    The score is the mean of ``por``, ``1 - delta_e`` and ``grv``. The boolean
+    indicates whether the score meets ``threshold`` and should therefore be
+    considered adopted.
+    """
+    score = round((por + (1.0 - delta_e) + grv) / 3.0, 3)
+    return score, score >= threshold
+
+
 # ---------------------------------------------------------------------------
 # record structure
 # ---------------------------------------------------------------------------
@@ -106,9 +117,12 @@ def run_cycle(steps: int, output: Path, interactive: bool = False) -> None:
         por = hybrid_por_score(params, question, history)
         delta_e = deltae_score(prev_answer, answer)
         grv = grv_score(answer)
+        score, adopted = evaluate_metrics(por, delta_e, grv)
 
         print(f"[AI応答] {answer}")
-        print(f"【PoR】{por:.2f} | 【ΔE】{delta_e:.3f} | 【grv】{grv:.3f}")
+        print(
+            f"【PoR】{por:.2f} | 【ΔE】{delta_e:.3f} | 【grv】{grv:.3f} | 【評価】{score:.3f} {'採用' if adopted else '不採用'}"
+        )
 
         history.append(QaRecord(question, answer, por, delta_e, grv))
         prev_answer = answer
