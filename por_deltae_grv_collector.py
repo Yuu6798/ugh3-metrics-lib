@@ -125,13 +125,14 @@ def run_cycle(steps: int, output: Path, interactive: bool = False) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
     parser.add_argument("-n", "--steps", type=int, default=10, help="number of cycles")
     parser.add_argument("-o", "--output", type=Path, default=Path("por_history.csv"), help="CSV output path")
-    args = parser.parse_args()
+    parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
+    args = parser.parse_args(argv)
 
-    run_cycle(args.steps, args.output, interactive=True)
+    run_cycle(args.steps, args.output, interactive=not args.auto)
 
 
 if __name__ == "__main__":
