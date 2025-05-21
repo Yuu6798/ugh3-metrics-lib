@@ -10,6 +10,8 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Dict, Any
+import random
+from por_trigger import por_trigger
 
 import grv_scoring
 
@@ -29,24 +31,31 @@ def compute_semantic_similarity(text1: str, text2: str) -> float:
 
 
 def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, Any]:
-    """Estimate minimal UGH parameters from history."""
-    if not history:
-        novelty = 1.0
-    else:
-        max_sim = max(compute_semantic_similarity(question, h.question) for h in history)
-        novelty = 1.0 - max_sim
-    return {"novelty": round(novelty, 3)}
+    """Estimate UGH parameters from the question text and history length."""
+    q_len = len(question)
+    h_len = len(history)
+
+    q = min(1.0, q_len / 50.0)
+    s = min(1.0, 0.5 + 0.05 * h_len)
+    t = 0.5 + min(0.5, q_len / 100.0)
+    phi_C = round(0.8 + random.uniform(-0.05, 0.05), 3)
+    D = round(min(0.5, 0.1 + 0.02 * h_len) + random.uniform(0, 0.05), 3)
+
+    return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
 
 
 def hybrid_por_score(params: Dict[str, Any], question: str, history: List["QaRecord"], w1: float = 0.6, w2: float = 0.4) -> float:
-    """Return a simplified PoR score from novelty and semantic change."""
-    novelty = params.get("novelty", 1.0)
+    """Return a hybrid PoR score using UGHer and semantic similarity."""
+    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
+    por1 = trig["score"] * (1 - params["D"])
+
     if history:
-        prev_q = history[-1].question
-        sem = 1.0 - compute_semantic_similarity(question, prev_q)
+        max_sim = max(compute_semantic_similarity(question, h.question) for h in history)
+        por2 = 1.0 - max_sim
     else:
-        sem = 1.0
-    score = w1 * novelty + w2 * sem
+        por2 = 1.0
+
+    score = w1 * por1 + w2 * por2
     return round(score, 2)
 
 
