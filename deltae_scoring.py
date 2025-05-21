@@ -25,3 +25,6 @@ def deltae_score(E1: float, E2: float) -> float:
     """
     # Calculate delta E by subtracting the first value from the second
     return E2 - E1
+
+
+__all__ = ["deltae_score"]

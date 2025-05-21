@@ -47,3 +47,6 @@ def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: 
         "score": score,
         "triggered": triggered,
     }
+
+
+__all__ = ["por_trigger"]

@@ -42,3 +42,6 @@ def grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float:
     vocab = _collect_vocab(texts)
     score = min(1.0, len(vocab) / float(vocab_limit))
     return round(score, 3)
+
+
+__all__ = ["grv_score"]
