@@ -28,3 +28,24 @@ def test_scripts_run(tmp_path):
     # run a single step of the QA cycle
     secl_qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
 
+
+def test_run_cycle_generates_csv(tmp_path):
+    """run_cycle should create a CSV with expected columns and rows."""
+    from por_deltae_grv_collector import run_cycle
+    out_file = tmp_path / "cycle.csv"
+    run_cycle(2, out_file, interactive=False)
+
+    import csv
+    with open(out_file, newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert len(rows) == 2
+    assert list(rows[0].keys()) == [
+        "question",
+        "answer",
+        "por",
+        "delta_e",
+        "grv",
+        "timestamp",
+    ]
+
