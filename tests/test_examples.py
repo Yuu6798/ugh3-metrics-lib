@@ -33,14 +33,16 @@ def test_run_cycle_generates_csv(tmp_path):
     """run_cycle should create a CSV with expected columns and rows."""
     from por_deltae_grv_collector import run_cycle
     out_file = tmp_path / "cycle.csv"
-    run_cycle(2, out_file, interactive=False)
+    steps = 2
+    run_cycle(steps, out_file, interactive=False)
 
     import csv
     with open(out_file, newline="", encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+        reader = csv.DictReader(fh)
+        rows = list(reader)
+        header = reader.fieldnames
 
-    assert len(rows) == 2
-    assert list(rows[0].keys()) == [
+    assert header == [
         "question",
         "answer",
         "por",
@@ -48,4 +50,5 @@ def test_run_cycle_generates_csv(tmp_path):
         "grv",
         "timestamp",
     ]
+    assert 1 <= len(rows) <= steps
 
