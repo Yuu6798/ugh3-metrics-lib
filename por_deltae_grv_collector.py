@@ -9,11 +9,19 @@ import time
 from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import random
 from por_trigger import por_trigger
 
 import grv_scoring
+
+# ---------------------------------------------------------------------------
+# metric weights and threshold
+# ---------------------------------------------------------------------------
+W_POR: float = 0.4
+W_DE: float = 0.4
+W_GRV: float = 0.2
+ADOPT_TH: float = 0.45
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +80,12 @@ def grv_score(answer: str) -> float:
     return grv_scoring.grv_score(answer)
 
 
+def evaluate_metrics(por: float, delta_e: float, grv: float) -> Tuple[float, bool]:
+    """Return combined score and adoption flag based on weights and threshold."""
+    score = W_POR * por + W_DE * (1 - delta_e) + W_GRV * grv
+    return round(score, 3), score >= ADOPT_TH
+
+
 # ---------------------------------------------------------------------------
 # record structure
 # ---------------------------------------------------------------------------
@@ -110,7 +124,12 @@ def run_cycle(steps: int, output: Path, interactive: bool = False) -> None:
         print(f"[AI応答] {answer}")
         print(f"【PoR】{por:.2f} | 【ΔE】{delta_e:.3f} | 【grv】{grv:.3f}")
 
-        history.append(QaRecord(question, answer, por, delta_e, grv))
+        score, adopted = evaluate_metrics(por, delta_e, grv)
+        label = "採用" if adopted else "不採用"
+        print(f"【総合】{score:.3f} → {label}")
+
+        if adopted:
+            history.append(QaRecord(question, answer, por, delta_e, grv))
         prev_answer = answer
 
     if history:
