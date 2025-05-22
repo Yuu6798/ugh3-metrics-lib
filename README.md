@@ -22,9 +22,9 @@ git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 
 ## Quick Start / クイックスタート
 ```python
-from por_trigger import por_trigger
-from deltae_scoring import deltae_score
-from grv_scoring import grv_score
+from facade.trigger import por_trigger
+from core.deltae import deltae_score
+from core.grv import grv_score
 
 result = por_trigger(q=1.0, s=0.9, t=0.8, phi_C=1.05, D=0.1)
 print(result)
@@ -46,9 +46,9 @@ step 3: PoR=0.912 triggered=True ΔE=0.900 grv=0.033
 <!-- AUTO SECTION START -->
 ### Import Examples / インポート例
 ```python
-from por_trigger import por_trigger
-from deltae_scoring import deltae_score
-from grv_scoring import grv_score
+from facade.trigger import por_trigger
+from core.deltae import deltae_score
+from core.grv import grv_score
 ```
 
 ### Function Overview / 関数概要
@@ -120,11 +120,11 @@ python examples/visualize_tensor.py --demo
 数値帯はあくまで一例ですが、PoRが0.6を超えるか、ΔEが0.2未満か、grvが0.7以上か
 を基準にすれば「照合成功」「安定」「高難度」といった評価が可能です。
 ## Script Structure / スクリプト構成
-- `por_trigger.py` – PoRトリガー計算
-- `deltae_scoring.py` – ΔEスコア計算
-- `grv_scoring.py` – grvメトリクス計算
-- `secl_qa_cycle.py` – メトリクスを使用したQ&Aサイクル例
-- `por_deltae_grv_collector.py` – 簡易データ収集CLI
+- `facade/trigger.py` – PoRトリガー計算
+- `core/deltae.py` – ΔEスコア計算
+- `core/grv.py` – grvメトリクス計算
+- `secl/qa_cycle.py` – メトリクスを使用したQ&Aサイクル例
+- `facade/collector.py` – 簡易データ収集CLI
 - `design_sketch.py` – コア計算のリファレンス実装
 - `examples/phase_map_heatmap.py` – PoRフェーズヒートマップ例
 - `tests/` – ユニットテスト
