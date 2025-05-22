@@ -12,18 +12,18 @@ from secl.qa_cycle import (
 import json
 
 class TestAnomalies(unittest.TestCase):
-    def test_check_metric_anomalies(self):
+    def test_check_metric_anomalies(self) -> None:
         por, de, grv = check_metric_anomalies(0.95, 0.95, 0.96)
         self.assertTrue(por)
         self.assertTrue(de)
         self.assertTrue(grv)
 
-    def test_detect_por_null(self):
+    def test_detect_por_null(self) -> None:
         self.assertTrue(detect_por_null('', 'ans', 0, 0))
         self.assertTrue(detect_por_null('q', '', 0, 0))
         self.assertFalse(detect_por_null('q', 'ans', 1.0, 0.5))
 
-    def test_backup_history(self):
+    def test_backup_history(self) -> None:
         hist = [HistoryEntry('q', 'a', 0.1, 0.2, 0.3, False, False)]
         tmp_dir = Path('tests/tmp_bk')
         backup_history(tmp_dir, hist, 'test')

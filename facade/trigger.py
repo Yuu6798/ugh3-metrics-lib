@@ -7,11 +7,13 @@ based on the descriptions provided in design_sketch.py and spec.md.
 
 from __future__ import annotations
 
+from typing import Dict
+
 from secl.qa_cycle import main_qa_cycle
 
 
 
-def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict:
+def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> Dict[str, float | bool]:
     """Calculate whether a PoR event should be triggered.
 
     Parameters
