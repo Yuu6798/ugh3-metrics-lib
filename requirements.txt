@@ -2,3 +2,4 @@ matplotlib
 pytest
 pandas
 seaborn
+mypy
