@@ -2,19 +2,14 @@ import matplotlib
 matplotlib.use('Agg')
 
 def test_import_example_modules() -> None:
-    import phase_map_demo
-    import facade.collector
-    import secl.qa_cycle
-    import core.history
+    from ugh3_metrics_lib import phase_map_demo, facade, secl, core
 
 
 from pathlib import Path
 
 
 def test_scripts_run(tmp_path: Path) -> None:
-    import phase_map_demo
-    import facade.collector
-    import secl.qa_cycle
+    from ugh3_metrics_lib import phase_map_demo, facade, secl
 
     # phase_map_demo main should run without errors
     phase_map_demo.main()
@@ -34,7 +29,7 @@ def test_scripts_run(tmp_path: Path) -> None:
 
 def test_run_cycle_generates_csv(tmp_path: Path) -> None:
     """run_cycle should create a CSV with expected columns and rows."""
-    from facade.collector import run_cycle
+    from ugh3_metrics_lib.facade.collector import run_cycle
     out_file = tmp_path / "cycle.csv"
     steps = 2
     run_cycle(steps, out_file, interactive=False)

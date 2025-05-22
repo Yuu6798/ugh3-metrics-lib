@@ -1,9 +1,9 @@
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 import unittest
 from pathlib import Path
-from secl.qa_cycle import (
+from ugh3_metrics_lib.secl.qa_cycle import (
     check_metric_anomalies,
     detect_por_null,
     HistoryEntry,

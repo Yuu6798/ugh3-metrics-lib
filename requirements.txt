@@ -3,6 +3,8 @@ pytest
 pandas
 seaborn
 mypy
+# SBERT dependency
+sentence-transformers>=2.7.0
 # Optional AI provider libraries (uncomment to enable)
 # openai>=1.0.0  # for OpenAI API access
 # anthropic

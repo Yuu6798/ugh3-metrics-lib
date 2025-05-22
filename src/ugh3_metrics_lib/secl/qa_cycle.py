@@ -23,7 +23,17 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 
-from utils.config_loader import CONFIG
+try:
+    from sentence_transformers import SentenceTransformer, util  # type: ignore
+    SBERT = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+except Exception:  # pragma: no cover - optional dependency
+    SBERT = None
+
+LEN_COEFF = 0.1  # 旧 0.5
+COS_COEFF = 0.7
+RAND_COEFF = 0.2
+
+from ..utils.config_loader import CONFIG
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
@@ -78,12 +88,22 @@ def is_duplicate_question(question: str, history_list: List[HistoryEntry]) -> bo
     return False
 
 
-def simulate_delta_e(current_q: str, next_q: str, answer: str) -> float:
-    q2q = abs(len(current_q) - len(next_q)) / 30.0
-    q2a = 1.0 - SequenceMatcher(None, current_q, answer).ratio()
-    random_factor = random.uniform(0.1, 0.8)
-    delta_e_jump = min(1.0, 0.5 * q2q + 0.3 * q2a + 0.2 * random_factor)
-    return round(delta_e_jump, 3)
+def simulate_delta_e(prev_q: str, curr_q: str, answer: str) -> float:
+    """Return simulated ΔE using SBERT cosine distance as main factor."""
+    q_len_gap = abs(len(prev_q) - len(curr_q)) / 30.0
+
+    if SBERT is not None:
+        try:
+            sem_gap = 1.0 - float(util.cos_sim(SBERT.encode(prev_q), SBERT.encode(answer)))
+        except Exception:
+            sem_gap = 1.0 - SequenceMatcher(None, prev_q, answer).ratio()
+    else:
+        # approximate smaller gap when embeddings are unavailable
+        sem_gap = 0.3
+
+    rand = random.uniform(0.1, 0.8)
+    delta_e = min(1.0, LEN_COEFF * q_len_gap + COS_COEFF * sem_gap + RAND_COEFF * rand)
+    return round(delta_e, 3)
 
 
 def simulate_generate_answer(question: str) -> str:

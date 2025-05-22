@@ -31,7 +31,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency may not be present
     _ST_MODEL = None
 
-from utils.config_loader import MAX_VOCAB_CAP
+from ..utils.config_loader import MAX_VOCAB_CAP
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -41,7 +41,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     pass
 
-from facade.trigger import por_trigger
+from .trigger import por_trigger
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -237,7 +237,7 @@ def generate_next_question(
     """Return the next question using the specified LLM provider."""
     if provider == "template":
         from typing import cast
-        from secl.qa_cycle import (
+        from ..secl.qa_cycle import (
             simulate_generate_next_question_from_answer,
             HistoryEntry as SeHistoryEntry,
         )
@@ -379,6 +379,7 @@ def run_cycle(
     q_provider: str = "openai",
     ai_provider: str = "openai",
     grv_mode: str = "simple",
+    max_len: int | None = None,
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -396,6 +397,9 @@ def run_cycle(
         Provider used for answer generation.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
+    max_len : int | None, optional
+        When provided, generated questions and answers are truncated to this
+        length.
     """
     history: List[HistoryEntry] = []
     prev_answer: str | None = None
@@ -421,7 +425,12 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov)
 
+        if max_len is not None and len(question) > max_len:
+            question = question[:max_len] + "…"
+
         answer = get_ai_response(question, provider=provider)
+        if max_len is not None and len(answer) > max_len:
+            answer = answer[:max_len] + "…"
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
@@ -514,6 +523,12 @@ def main(argv: List[str] | None = None) -> None:
         default="simple",
         help="grv score mode",
     )
+    parser.add_argument(
+        "--max-len",
+        type=int,
+        default=None,
+        help="truncate generated text to this length",
+    )
 
     args = parser.parse_args(argv)
 
@@ -551,6 +566,7 @@ def main(argv: List[str] | None = None) -> None:
         q_provider=args.q_provider,
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
+        max_len=args.max_len,
     )
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）

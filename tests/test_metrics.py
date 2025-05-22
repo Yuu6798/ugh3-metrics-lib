@@ -1,9 +1,13 @@
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 import unittest
 
-from secl.qa_cycle import novelty_score, is_duplicate_question, HistoryEntry
+from ugh3_metrics_lib.secl.qa_cycle import (
+    novelty_score,
+    is_duplicate_question,
+    HistoryEntry,
+)
 
 
 class TestMetrics(unittest.TestCase):
@@ -19,6 +23,17 @@ class TestMetrics(unittest.TestCase):
         history = [HistoryEntry('what is life?', 'ans', 0, 0, 0, False, False)]
         self.assertTrue(is_duplicate_question('what is life?', history))
         self.assertFalse(is_duplicate_question('another', history))
+
+    def test_delta_e_range(self) -> None:
+        import random
+        from ugh3_metrics_lib.secl.qa_cycle import main_qa_cycle
+
+        random.seed(42)
+        hist = main_qa_cycle(50)
+        values = [h.delta_e for h in hist]
+        avg = sum(values) / len(values)
+        self.assertGreaterEqual(avg, 0.35)
+        self.assertLessEqual(avg, 0.65)
 
 
 if __name__ == '__main__':

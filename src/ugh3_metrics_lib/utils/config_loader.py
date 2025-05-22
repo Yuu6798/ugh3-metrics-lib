@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+CONFIG_PATH = Path(__file__).resolve().parents[3] / "config.json"
 
 
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
