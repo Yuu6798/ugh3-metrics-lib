@@ -46,7 +46,10 @@ def _dummy_response(question: str) -> str:
 
 
 def _call_openai(question: str) -> str:
-    """Return an answer from OpenAI's API using the v1 ``Client`` interface."""
+    """Return an answer from OpenAI's API using the v1 ``Client`` interface.
+
+    Requires ``openai>=1.0.0`` and the ``OPENAI_API_KEY`` environment variable.
+    """
 
     # ``openai`` is optional. Install via `pip install openai>=1.0.0` if needed
     # and obtain an API key at https://platform.openai.com/account/api-keys
