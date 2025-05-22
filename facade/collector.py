@@ -53,7 +53,7 @@ def _similarity(text1: str, text2: str) -> float:
 # Metric calculations
 # ---------------------------------------------------------------------------
 
-def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, Any]:
+def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
     q_len = len(question)
     h_len = len(history)
@@ -64,9 +64,8 @@ def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, A
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
 
-
 def hybrid_por_score(
-    params: Dict[str, Any], question: str, history: List["QaRecord"], *, w1: float = 0.6, w2: float = 0.4
+    params: Dict[str, float], question: str, history: List["QaRecord"], *, w1: float = 0.6, w2: float = 0.4
 ) -> float:
     """Return PoR score based on UGHer model and semantic similarity."""
     trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])

@@ -8,7 +8,10 @@ def test_import_example_modules() -> None:
     import core.history
 
 
-def test_scripts_run(tmp_path) -> None:
+from pathlib import Path
+
+
+def test_scripts_run(tmp_path: Path) -> None:
     import phase_map_demo
     import facade.collector
     import secl.qa_cycle
@@ -29,7 +32,7 @@ def test_scripts_run(tmp_path) -> None:
     secl.qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
 
 
-def test_run_cycle_generates_csv(tmp_path) -> None:
+def test_run_cycle_generates_csv(tmp_path: Path) -> None:
     """run_cycle should create a CSV with expected columns and rows."""
     from facade.collector import run_cycle
     out_file = tmp_path / "cycle.csv"
