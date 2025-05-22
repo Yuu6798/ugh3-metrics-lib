@@ -50,9 +50,16 @@ def _dummy_response(question: str) -> str:
 
 
 def _call_openai(
-    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+    question: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    role: str | None = None,
 ) -> str:
-    """Return a response from OpenAI's API using the v1 ``Client`` interface."""
+    """Return a response from OpenAI's API using the v1 ``Client`` interface.
+
+    The ``role`` argument is informational only and currently unused.
+    """
 
     # ``openai`` is optional. Install via `pip install openai>=1.0.0` if needed
     # and obtain an API key at https://platform.openai.com/account/api-keys
@@ -87,9 +94,16 @@ def _call_openai(
 
 
 def _call_anthropic(
-    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+    question: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    role: str | None = None,
 ) -> str:
-    """Return an answer from Anthropic's API or a friendly error message."""
+    """Return an answer from Anthropic's API or a friendly error message.
+
+    The ``role`` argument is informational only and currently unused.
+    """
     # anthropic library is optional; install via `pip install anthropic`
     # Get your API key from https://console.anthropic.com/ and set
     # ANTHROPIC_API_KEY in the environment.
@@ -119,9 +133,16 @@ def _call_anthropic(
 
 
 def _call_gemini(
-    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+    question: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    role: str | None = None,
 ) -> str:
-    """Return an answer from Google Gemini or a friendly error message."""
+    """Return an answer from Google Gemini or a friendly error message.
+
+    The ``role`` argument is informational only and currently unused.
+    """
     # google-generativeai library is optional; install via `pip install google-generativeai`
     # Get an API key at https://aistudio.google.com/app/apikey and set
     # GEMINI_API_KEY in your environment.
@@ -149,15 +170,15 @@ def _call_gemini(
 
 
 def get_ai_response(question: str, provider: str | None = None) -> str:
-    """Return an AI generated answer using the specified provider.
+    """Return an AI-generated answer using the chosen provider.
 
     Parameters
     ----------
     question : str
         User question to send to the AI.
     provider : str | None, optional
-        Which AI service to use (``openai``, ``anthropic``, ``gemini``). If
-        ``None``, the environment variable ``AI_PROVIDER`` will be checked.
+        Which AI service to use (``openai``, ``anthropic``, ``gemini``, ``dummy``).
+        If ``None``, the environment variable ``AI_PROVIDER`` will be checked.
         If no provider is found, a simple deterministic answer is returned.
 
     Notes
@@ -174,11 +195,11 @@ def get_ai_response(question: str, provider: str | None = None) -> str:
     print(f"[AI provider] {prov}")
 
     if prov == "openai":
-        return _call_openai(question)
+        return _call_openai(question, role="answer")
     if prov == "anthropic":
-        return _call_anthropic(question)
+        return _call_anthropic(question, role="answer")
     if prov == "gemini":
-        return _call_gemini(question)
+        return _call_gemini(question, role="answer")
     if prov == "dummy":
         return _dummy_response(question)
 
@@ -191,8 +212,10 @@ def _similarity(text1: str, text2: str) -> float:
     return SequenceMatcher(None, text1, text2).ratio()
 
 
-def generate_next_question(prev_answer: str, history: List["HistoryEntry"], provider: str) -> str:
-    """Return the next question using the specified generator."""
+def generate_next_question(
+    prev_answer: str, history: List["HistoryEntry"], provider: str
+) -> str:
+    """Return the next question using the specified LLM provider."""
     if provider == "template":
         from typing import cast
         from secl.qa_cycle import (
@@ -208,11 +231,11 @@ def generate_next_question(prev_answer: str, history: List["HistoryEntry"], prov
         "テーマや視点を少し変えた新しい質問を1文生成してください。"
     )
     if provider == "openai":
-        return _call_openai(prompt, temperature=1.2, max_tokens=40)
+        return _call_openai(prompt, temperature=1.2, max_tokens=40, role="question")
     if provider == "anthropic":
-        return _call_anthropic(prompt, temperature=1.2, max_tokens=40)
+        return _call_anthropic(prompt, temperature=1.2, max_tokens=40, role="question")
     if provider == "gemini":
-        return _call_gemini(prompt, temperature=1.2, max_tokens=40)
+        return _call_gemini(prompt, temperature=1.2, max_tokens=40, role="question")
     return _dummy_response(prompt)
 
 
@@ -303,7 +326,8 @@ def run_cycle(
     quiet: bool = False,
     summary: bool = False,
     jsonl_path: Path | None = None,
-    q_provider: str = "template",
+    q_provider: str = "openai",
+    ai_provider: str = "openai",
     grv_mode: str = "simple",
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
@@ -317,7 +341,9 @@ def run_cycle(
     jsonl_path : Path | None, optional
         When provided, adopted records are also appended to this JSONL file.
     q_provider : str, optional
-        Question generation provider (LLM or template).
+        Question generation provider (LLM or ``dummy``).
+    ai_provider : str, optional
+        Provider used for answer generation.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
     """
@@ -332,7 +358,7 @@ def run_cycle(
     except Exception:
         iter_range = range(steps)
 
-    provider = os.getenv("AI_PROVIDER", "dummy")
+    provider = ai_provider or os.getenv("AI_PROVIDER", "dummy")
     q_prov = q_provider
 
     for idx in iter_range:
@@ -345,7 +371,7 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov)
 
-        answer = get_ai_response(question)
+        answer = get_ai_response(question, provider=provider)
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
@@ -422,9 +448,15 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
     parser.add_argument(
         "--q-provider",
-        choices=["openai", "anthropic", "gemini", "template"],
-        default="template",
+        choices=["openai", "anthropic", "gemini", "dummy", "template"],
+        default="openai",
         help="question generation provider",
+    )
+    parser.add_argument(
+        "--ai-provider",
+        choices=["openai", "anthropic", "gemini", "dummy"],
+        default="openai",
+        help="answer generation provider",
     )
     parser.add_argument(
         "--grv-mode",
@@ -439,7 +471,7 @@ def main(argv: List[str] | None = None) -> None:
         exp_id = args.exp_id
     else:
         ts = time.strftime("%Y%m%d-%H%M%S")
-        exp_id = f"{ts}_q-{args.q_provider}_g-{args.grv_mode}"
+        exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
@@ -467,13 +499,15 @@ def main(argv: List[str] | None = None) -> None:
         summary=args.summary,
         jsonl_path=output_jsonl,
         q_provider=args.q_provider,
+        ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
     )
 
-# LLM質問+拡張ジャンプで300問収集
-# python facade/collector.py --auto -n 300 \
-#     --q-provider openai --grv-mode entropy \
-#     --quiet --summary
+# LLM同士で自動進化対話（質問も応答もOpenAI）
+# python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
+
+# 質問はGemini、応答はOpenAIで異種AI対話も可
+# python facade/collector.py --auto -n 50 --q-provider gemini --ai-provider openai --quiet --summary
 
 
 if __name__ == "__main__":
