@@ -18,18 +18,27 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional, cast
 import os
 import sys
 
 try:
-    from sentence_transformers import SentenceTransformer  # type: ignore
+    from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
     import numpy as np
-    _ST_MODEL = SentenceTransformer(
-        "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
-    )
 except Exception:  # pragma: no cover - optional dependency may not be present
-    _ST_MODEL = None
+    SentenceTransformer = cast(Any, None)
+    import numpy as np
+
+SBERT_MODEL_ID = os.getenv("SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2")
+_ST_MODEL: Optional[SentenceTransformer] = None
+
+
+def get_sbert() -> SentenceTransformer:
+    """Return a singleton SBERT model (lazy-loaded)."""
+    global _ST_MODEL
+    if _ST_MODEL is None:
+        _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
+    return cast(SentenceTransformer, _ST_MODEL)
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -304,19 +313,19 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """
     if prev_answer is None:
         return 0.0
-    if _ST_MODEL is not None:
-        try:
-            v1 = _ST_MODEL.encode(prev_answer)
-            v2 = _ST_MODEL.encode(curr_answer)
-            num = float(np.dot(v1, v2))
-            denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-            if denom == 0:
-                raise ValueError("zero norm")
-            cos_sim = num / denom
-            diff = max(0.0, 1.0 - cos_sim)
-            return round(min(1.0, diff), 3)
-        except Exception:
-            pass
+    try:
+        model = get_sbert()
+        v1 = model.encode(prev_answer)
+        v2 = model.encode(curr_answer)
+        num = float(np.dot(v1, v2))
+        denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
+        if denom == 0:
+            raise ValueError("zero norm")
+        cos_sim = num / denom
+        diff = max(0.0, 1.0 - cos_sim)
+        return round(min(1.0, diff), 3)
+    except Exception:
+        pass
     diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
     return round(diff, 3)
 
@@ -379,6 +388,7 @@ def run_cycle(
     q_provider: str = "openai",
     ai_provider: str = "openai",
     grv_mode: str = "simple",
+    max_len: int | None = None,
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -396,6 +406,9 @@ def run_cycle(
         Provider used for answer generation.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
+    max_len : int | None, optional
+        When provided, generated questions and answers are truncated to this
+        length.
     """
     history: List[HistoryEntry] = []
     prev_answer: str | None = None
@@ -421,7 +434,12 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov)
 
+        if max_len is not None and len(question) > max_len:
+            question = question[:max_len] + "…"
+
         answer = get_ai_response(question, provider=provider)
+        if max_len is not None and len(answer) > max_len:
+            answer = answer[:max_len] + "…"
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
@@ -514,6 +532,12 @@ def main(argv: List[str] | None = None) -> None:
         default="simple",
         help="grv score mode",
     )
+    parser.add_argument(
+        "--max-len",
+        type=int,
+        default=None,
+        help="truncate generated text to this length",
+    )
 
     args = parser.parse_args(argv)
 
@@ -551,6 +575,7 @@ def main(argv: List[str] | None = None) -> None:
         q_provider=args.q_provider,
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
+        max_len=args.max_len,
     )
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
