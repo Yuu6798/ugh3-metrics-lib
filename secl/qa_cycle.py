@@ -321,7 +321,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     grv_history: List[float] = []
     score_threshold = BASE_SCORE_THRESHOLD
     current_question = "意識はどこから生まれるか？"
-    prev_question: str = ""
+    prev_question: str = current_question
     for step in range(n_steps):
         print(f"\n--- Step {step+1} ---")
         answer = simulate_generate_answer(current_question)
