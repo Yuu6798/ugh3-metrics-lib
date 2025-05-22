@@ -9,6 +9,7 @@ capped at ``1.0``.
 from __future__ import annotations
 
 from typing import Iterable
+from math import log2
 
 
 def _collect_vocab(texts: Iterable[str]) -> set[str]:
@@ -19,7 +20,9 @@ def _collect_vocab(texts: Iterable[str]) -> set[str]:
     return vocab
 
 
-def grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float:
+def grv_score(
+    text: str | list[str], *, vocab_limit: int = 30, mode: str = "simple"
+) -> float:
     """Calculate vocabulary gravity (grv) for the given text or list.
 
     Parameters
@@ -32,7 +35,7 @@ def grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float:
     Returns
     -------
     float
-        ``min(1.0, vocab_size / vocab_limit)`` rounded to three decimals.
+        Score between 0.0 and 1.0 rounded to three decimals.
     """
     if isinstance(text, str):
         texts = [text]
@@ -40,8 +43,21 @@ def grv_score(text: str | list[str], *, vocab_limit: int = 30) -> float:
         texts = text
 
     vocab = _collect_vocab(texts)
-    score = min(1.0, len(vocab) / float(vocab_limit))
-    return round(score, 3)
+    if mode == "simple":
+        score = min(1.0, len(vocab) / float(vocab_limit))
+        return round(score, 3)
+    if mode == "entropy":
+        tokens: list[str] = []
+        for t in texts:
+            tokens.extend(t.split())
+        if not tokens:
+            return 0.0
+        ttr = len(vocab) / len(tokens)
+        freqs = {w: tokens.count(w) / len(tokens) for w in vocab}
+        denom = log2(len(vocab)) if len(vocab) > 1 else 1.0
+        ent = -sum(p * log2(p) for p in freqs.values()) / denom
+        return round((ttr + ent) / 2.0, 3)
+    raise ValueError("invalid mode")
 
 
 __all__ = ["grv_score"]
