@@ -26,12 +26,13 @@ import os
 
 try:
     from sentence_transformers import SentenceTransformer, util  # type: ignore[import-not-found]
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
+    from typing import Any
     SentenceTransformer = cast(Any, None)
     util = None
 
 SBERT_MODEL_ID = os.getenv("SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2")
-_ST_MODEL: Optional[SentenceTransformer] = None
+_ST_MODEL: Optional[Any] = None
 
 
 def get_sbert() -> SentenceTransformer:
@@ -39,7 +40,7 @@ def get_sbert() -> SentenceTransformer:
     global _ST_MODEL
     if _ST_MODEL is None:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
-    return cast(SentenceTransformer, _ST_MODEL)
+    return _ST_MODEL
 
 LEN_COEFF = 0.1  # 旧 0.5
 COS_COEFF = 0.7
