@@ -64,7 +64,7 @@ def plot_heatmap(history: List[PorRecord]) -> None:
         aspect="auto",
         cmap="viridis",
         origin="lower",
-        extent=[0, len(por_values), 0.0, 1.0],
+        extent=(0, len(por_values), 0.0, 1.0),
     )
     plt.xlabel("Phase")
     plt.ylabel("PoR score")

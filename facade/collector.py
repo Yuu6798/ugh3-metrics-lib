@@ -69,8 +69,14 @@ def hybrid_por_score(
     params: Dict[str, Any], question: str, history: List["QaRecord"], *, w1: float = 0.6, w2: float = 0.4
 ) -> float:
     """Return PoR score based on UGHer model and semantic similarity."""
-    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
-    por_model = trig["score"] * (1 - params["D"])
+    trig = por_trigger(
+        float(params["q"]),
+        float(params["s"]),
+        float(params["t"]),
+        float(params["phi_C"]),
+        float(params["D"]),
+    )
+    por_model = trig["score"] * (1 - float(params["D"]))
     if history:
         max_sim = max(_similarity(question, h.question) for h in history)
         por_sim = 1.0 - max_sim

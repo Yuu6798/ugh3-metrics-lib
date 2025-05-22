@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+from typing import TypedDict
 
-def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict:
+
+class PorTriggerResult(TypedDict):
+    """Return type for :func:`por_trigger`."""
+
+    E_prime: float
+    score: float
+    triggered: bool
+
+
+def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> PorTriggerResult:
     """Return PoR trigger metrics for the given parameters."""
     # Compute the intermediate energy metric
     E_prime = q * s * t

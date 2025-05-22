@@ -8,10 +8,11 @@ based on the descriptions provided in design_sketch.py and spec.md.
 from __future__ import annotations
 
 from secl.qa_cycle import main_qa_cycle
+from design_sketch import PorTriggerResult
 
 
 
-def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict:
+def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> PorTriggerResult:
     """Calculate whether a PoR event should be triggered.
 
     Parameters
