@@ -20,6 +20,17 @@ class TestMetrics(unittest.TestCase):
         self.assertTrue(is_duplicate_question('what is life?', history))
         self.assertFalse(is_duplicate_question('another', history))
 
+    def test_delta_e_range(self) -> None:
+        import random
+        from secl.qa_cycle import main_qa_cycle
+
+        random.seed(42)
+        hist = main_qa_cycle(50)
+        values = [h.delta_e for h in hist]
+        avg = sum(values) / len(values)
+        self.assertGreaterEqual(avg, 0.35)
+        self.assertLessEqual(avg, 0.65)
+
 
 if __name__ == '__main__':
     unittest.main()
