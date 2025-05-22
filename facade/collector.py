@@ -18,6 +18,7 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+import os
 
 from facade.trigger import por_trigger
 from core.grv import grv_score as _grv_score
@@ -39,9 +40,118 @@ ADOPT_TH: float = 0.45
 # Basic helpers
 # ---------------------------------------------------------------------------
 
-def get_ai_response(question: str) -> str:
-    """Return a deterministic AI response for the given question."""
+def _dummy_response(question: str) -> str:
+    """Return a deterministic fallback response."""
     return f"Answer for '{question}'"
+
+
+def _call_openai(question: str) -> str:
+    """Return an answer from OpenAI's API or a friendly error message."""
+    # openai library is optional; install via `pip install openai`
+    # Obtain an API key from https://platform.openai.com/account/api-keys
+    # and set it to the OPENAI_API_KEY environment variable.
+    try:
+        import openai  # type: ignore[import-not-found]
+    except ImportError:
+        return "OpenAIプロバイダは利用できません（ライブラリ未インストール）"
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not isinstance(api_key, str) or not api_key:
+        return "OpenAI APIキーが設定されていません。"
+
+    openai.api_key = api_key
+    try:
+        resp: Any = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": question}],
+        )
+        return str(resp["choices"][0]["message"]["content"]).strip()
+    except Exception as err:
+        return f"OpenAI APIの呼び出しに失敗しました: {err}"
+
+
+def _call_anthropic(question: str) -> str:
+    """Return an answer from Anthropic's API or a friendly error message."""
+    # anthropic library is optional; install via `pip install anthropic`
+    # Get your API key from https://console.anthropic.com/ and set
+    # ANTHROPIC_API_KEY in the environment.
+    try:
+        import anthropic  # type: ignore[import-not-found]
+    except ImportError:
+        return "Anthropicプロバイダは利用できません（ライブラリ未インストール）"
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not isinstance(api_key, str) or not api_key:
+        return "Anthropic APIキーが設定されていません。"
+
+    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        resp: Any = client.messages.create(
+            model="claude-3-opus-20240229",
+            max_tokens=100,
+            messages=[{"role": "user", "content": question}],
+        )
+        return str(resp.content[0].text).strip()
+    except Exception as err:
+        return f"Anthropic APIの呼び出しに失敗しました: {err}"
+
+
+def _call_gemini(question: str) -> str:
+    """Return an answer from Google Gemini or a friendly error message."""
+    # google-generativeai library is optional; install via `pip install google-generativeai`
+    # Get an API key at https://aistudio.google.com/app/apikey and set
+    # GEMINI_API_KEY in your environment.
+    try:
+        from google.generativeai import configure, GenerativeModel  # type: ignore[import-not-found]
+    except ImportError:
+        return "Geminiプロバイダは利用できません（ライブラリ未インストール）"
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not isinstance(api_key, str) or not api_key:
+        return "Gemini APIキーが設定されていません。"
+
+    configure(api_key=api_key)
+    model = GenerativeModel("gemini-pro")
+    try:
+        resp: Any = model.generate_content(question)
+        return str(resp.text).strip()
+    except Exception as err:
+        return f"Gemini APIの呼び出しに失敗しました: {err}"
+
+
+def get_ai_response(question: str, provider: str | None = None) -> str:
+    """Return an AI generated answer using the specified provider.
+
+    Parameters
+    ----------
+    question : str
+        User question to send to the AI.
+    provider : str | None, optional
+        Which AI service to use (``openai``, ``anthropic``, ``gemini``). If
+        ``None``, the environment variable ``AI_PROVIDER`` will be checked.
+        If no provider is found, a simple deterministic answer is returned.
+
+    Notes
+    -----
+    To add support for another provider, implement a new ``_call_*`` function
+    similar to the above examples and extend the mapping in this function.
+    """
+
+    raw_provider: str = provider or os.getenv("AI_PROVIDER") or "dummy"
+    prov = raw_provider.lower()
+    print(f"[AI provider] {prov}")
+
+    if prov == "openai":
+        return _call_openai(question)
+    if prov == "anthropic":
+        return _call_anthropic(question)
+    if prov == "gemini":
+        return _call_gemini(question)
+    if prov == "dummy":
+        return _dummy_response(question)
+
+    print(f"[error] unsupported AI_PROVIDER '{prov}'")
+    return f"未対応のAI_PROVIDER '{prov}' が指定されました。"
 
 
 def _similarity(text1: str, text2: str) -> float:

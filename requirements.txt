@@ -3,3 +3,7 @@ pytest
 pandas
 seaborn
 mypy
+# Optional AI provider libraries (uncomment to enable)
+# openai
+# anthropic
+# google-generativeai
