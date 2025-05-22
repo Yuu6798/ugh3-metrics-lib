@@ -257,13 +257,33 @@ def run_cycle(
     stdin_mode: bool = False,
     quiet: bool = False,
     summary: bool = False,
+    jsonl_path: Path | None = None,
 ) -> None:
-    """Run the Q&A cycle for ``steps`` iterations and store results to ``output``."""
+    """Run the Q&A cycle for ``steps`` iterations and store results.
+
+    Parameters
+    ----------
+    steps : int
+        Number of iterations to execute.
+    output : Path
+        CSV file path for history output.
+    jsonl_path : Path | None, optional
+        When provided, adopted records are also appended to this JSONL file.
+    """
     history: List[QaRecord] = []
     prev_answer: str | None = None
     executed = 0
 
-    for idx in range(steps):
+    # optional progress bar
+    try:
+        from tqdm import tqdm  # type: ignore
+        iter_range = tqdm(range(steps), disable=quiet)
+    except Exception:
+        iter_range = range(steps)
+
+    provider = os.getenv("AI_PROVIDER", "dummy")
+
+    for idx in iter_range:
         if stdin_mode:
             question = sys.stdin.readline().strip()
             if not question:
@@ -289,6 +309,17 @@ def run_cycle(
 
         if adopted:
             history.append(QaRecord(question, answer, por, de, grv))
+            if jsonl_path is not None:
+                rec_dict = {
+                    "question": question,
+                    "answer": answer,
+                    "por": por,
+                    "delta_e": de,
+                    "grv": grv,
+                    "provider": provider,
+                }
+                with open(jsonl_path, "a", encoding="utf-8") as jfh:
+                    jfh.write(f"{rec_dict}\n")
         prev_answer = answer
         executed += 1
 
@@ -335,8 +366,16 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
     parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
     parser.add_argument("--summary", action="store_true", help="print summary at end")
+    parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
+    parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
 
     args = parser.parse_args(argv)
+
+    exp_id = args.exp_id or time.strftime("%Y%m%d-%H%M%S")
+    output_dir = Path("runs") / exp_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
+    output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
 
     if args.w_por is not None:
         globals()["W_POR"] = args.w_por
@@ -353,11 +392,12 @@ def main(argv: List[str] | None = None) -> None:
 
     run_cycle(
         args.steps,
-        args.output,
+        output_csv,
         interactive=(not args.auto and not args.stdin),
         stdin_mode=args.stdin,
         quiet=args.quiet,
         summary=args.summary,
+        jsonl_path=output_jsonl,
     )
 
 
