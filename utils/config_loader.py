@@ -10,8 +10,8 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """Load configuration parameters from a JSON file."""
     with open(path, "r", encoding="utf-8") as fh:
-        config_data = json.load(fh)
-    return cast(Dict[str, Any], config_data)
+        config_data = cast(Dict[str, Any], json.load(fh))
+    return config_data
 
 
 CONFIG: Dict[str, Any] = load_config()
