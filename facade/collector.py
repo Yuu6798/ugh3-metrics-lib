@@ -19,6 +19,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 import os
+import sys
 
 from facade.trigger import por_trigger
 from core.grv import grv_score as _grv_score
@@ -34,6 +35,9 @@ W_DE: float = 0.4
 W_GRV: float = 0.2
 # threshold for adopting a record into history
 ADOPT_TH: float = 0.45
+# weight factors inside hybrid_por_score
+POR_W1: float = 0.6
+POR_W2: float = 0.4
 
 
 # ---------------------------------------------------------------------------
@@ -187,9 +191,18 @@ def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, f
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
 
 def hybrid_por_score(
-    params: Dict[str, float], question: str, history: List["QaRecord"], *, w1: float = 0.6, w2: float = 0.4
+    params: Dict[str, float],
+    question: str,
+    history: List["QaRecord"],
+    *,
+    w1: float | None = None,
+    w2: float | None = None,
 ) -> float:
     """Return PoR score based on UGHer model and semantic similarity."""
+    if w1 is None:
+        w1 = POR_W1
+    if w2 is None:
+        w2 = POR_W2
     trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
     por_model = trig["score"] * (1 - params["D"])
     if history:
@@ -236,13 +249,26 @@ class QaRecord:
 # Cycle logic
 # ---------------------------------------------------------------------------
 
-def run_cycle(steps: int, output: Path, *, interactive: bool = False) -> None:
+def run_cycle(
+    steps: int,
+    output: Path,
+    *,
+    interactive: bool = False,
+    stdin_mode: bool = False,
+    quiet: bool = False,
+    summary: bool = False,
+) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results to ``output``."""
     history: List[QaRecord] = []
     prev_answer: str | None = None
+    executed = 0
 
     for idx in range(steps):
-        if interactive:
+        if stdin_mode:
+            question = sys.stdin.readline().strip()
+            if not question:
+                break
+        elif interactive:
             question = input(f"質問{idx + 1}: ")
         else:
             question = f"Q{idx + 1}"
@@ -253,15 +279,18 @@ def run_cycle(steps: int, output: Path, *, interactive: bool = False) -> None:
         de = delta_e(prev_answer, answer)
         grv = grv_score(answer)
 
-        print(f"[AI応答] {answer}")
+        if not quiet:
+            print(f"[AI応答] {answer}")
         print(f"【PoR】{por:.2f} | 【ΔE】{de:.3f} | 【grv】{grv:.3f}")
         score, adopted = evaluate_metrics(por, de, grv)
-        decision = "採用" if adopted else "不採用"
-        print(f"【総合】{score:.3f} → {decision}")
+        if not quiet:
+            decision = "採用" if adopted else "不採用"
+            print(f"【総合】{score:.3f} → {decision}")
 
         if adopted:
             history.append(QaRecord(question, answer, por, de, grv))
         prev_answer = answer
+        executed += 1
 
     if history:
         with open(output, "w", newline="", encoding="utf-8") as fh:
@@ -269,6 +298,16 @@ def run_cycle(steps: int, output: Path, *, interactive: bool = False) -> None:
             writer.writeheader()
             for rec in history:
                 writer.writerow(asdict(rec))
+
+    if summary:
+        por_avg = sum(h.por for h in history) / len(history) if history else 0.0
+        de_avg = sum(h.delta_e for h in history) / len(history) if history else 0.0
+        grv_avg = sum(h.grv for h in history) / len(history) if history else 0.0
+        print("=== Summary ===")
+        print(f"count:  {len(history)} / {executed}  (adopted / total)")
+        print(f"PoR μ:  {por_avg:.2f}")
+        print(f"ΔE μ:   {de_avg:.2f}")
+        print(f"grv μ:  {grv_avg:.2f}")
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +319,46 @@ def main(argv: List[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
     parser.add_argument("-n", "--steps", type=int, default=10, help="number of cycles")
     parser.add_argument(
-        "-o", "--output", type=Path, default=Path("por_history.csv"), help="CSV output path"
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("por_history.csv"),
+        help="CSV output path",
     )
     parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
+    parser.add_argument("--w-por", type=float, help="override W_POR")
+    parser.add_argument("--w-de", type=float, help="override W_DE")
+    parser.add_argument("--w-grv", type=float, help="override W_GRV")
+    parser.add_argument("--adopt-th", type=float, help="override ADOPT_TH")
+    parser.add_argument("--por-w1", type=float, help="hybrid_por_score w1")
+    parser.add_argument("--por-w2", type=float, help="hybrid_por_score w2")
+    parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
+    parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
+    parser.add_argument("--summary", action="store_true", help="print summary at end")
+
     args = parser.parse_args(argv)
 
-    run_cycle(args.steps, args.output, interactive=not args.auto)
+    if args.w_por is not None:
+        globals()["W_POR"] = args.w_por
+    if args.w_de is not None:
+        globals()["W_DE"] = args.w_de
+    if args.w_grv is not None:
+        globals()["W_GRV"] = args.w_grv
+    if args.adopt_th is not None:
+        globals()["ADOPT_TH"] = args.adopt_th
+    if args.por_w1 is not None:
+        globals()["POR_W1"] = args.por_w1
+    if args.por_w2 is not None:
+        globals()["POR_W2"] = args.por_w2
+
+    run_cycle(
+        args.steps,
+        args.output,
+        interactive=(not args.auto and not args.stdin),
+        stdin_mode=args.stdin,
+        quiet=args.quiet,
+        summary=args.summary,
+    )
 
 
 if __name__ == "__main__":
