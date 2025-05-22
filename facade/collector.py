@@ -49,11 +49,10 @@ def _dummy_response(question: str) -> str:
     return f"Answer for '{question}'"
 
 
-def _call_openai(question: str) -> str:
-    """Return an answer from OpenAI's API using the v1 ``Client`` interface.
-
-    Requires ``openai>=1.0.0`` and the ``OPENAI_API_KEY`` environment variable.
-    """
+def _call_openai(
+    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+) -> str:
+    """Return a response from OpenAI's API using the v1 ``Client`` interface."""
 
     # ``openai`` is optional. Install via `pip install openai>=1.0.0` if needed
     # and obtain an API key at https://platform.openai.com/account/api-keys
@@ -72,18 +71,24 @@ def _call_openai(question: str) -> str:
     client = OpenAI(api_key=api_key)
 
     try:
-        # Ask the model and return only the text part of the response
-        resp: Any = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": question}],
-        )
+        params: Dict[str, Any] = {
+            "model": "gpt-3.5-turbo",
+            "messages": [{"role": "user", "content": question}],
+        }
+        if temperature is not None:
+            params["temperature"] = temperature
+        if max_tokens is not None:
+            params["max_tokens"] = max_tokens
+        resp: Any = client.chat.completions.create(**params)
         return str(resp.choices[0].message.content).strip()
     except Exception as err:
         # In case of failure, return a beginner-friendly error message
         return f"OpenAI APIの呼び出しに失敗しました: {err}"
 
 
-def _call_anthropic(question: str) -> str:
+def _call_anthropic(
+    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+) -> str:
     """Return an answer from Anthropic's API or a friendly error message."""
     # anthropic library is optional; install via `pip install anthropic`
     # Get your API key from https://console.anthropic.com/ and set
@@ -99,17 +104,23 @@ def _call_anthropic(question: str) -> str:
 
     client = anthropic.Anthropic(api_key=api_key)
     try:
-        resp: Any = client.messages.create(
-            model="claude-3-opus-20240229",
-            max_tokens=100,
-            messages=[{"role": "user", "content": question}],
-        )
+        params: Dict[str, Any] = {
+            "model": "claude-3-opus-20240229",
+            "messages": [{"role": "user", "content": question}],
+        }
+        if max_tokens is not None:
+            params["max_tokens"] = max_tokens
+        if temperature is not None:
+            params["temperature"] = temperature
+        resp: Any = client.messages.create(**params)
         return str(resp.content[0].text).strip()
     except Exception as err:
         return f"Anthropic APIの呼び出しに失敗しました: {err}"
 
 
-def _call_gemini(question: str) -> str:
+def _call_gemini(
+    question: str, *, temperature: float | None = None, max_tokens: int | None = None
+) -> str:
     """Return an answer from Google Gemini or a friendly error message."""
     # google-generativeai library is optional; install via `pip install google-generativeai`
     # Get an API key at https://aistudio.google.com/app/apikey and set
@@ -126,7 +137,12 @@ def _call_gemini(question: str) -> str:
     configure(api_key=api_key)
     model = GenerativeModel("gemini-pro")
     try:
-        resp: Any = model.generate_content(question)
+        gen_cfg: Dict[str, Any] = {}
+        if temperature is not None:
+            gen_cfg["temperature"] = temperature
+        if max_tokens is not None:
+            gen_cfg["max_output_tokens"] = max_tokens
+        resp: Any = model.generate_content(question, generation_config=gen_cfg or None)
         return str(resp.text).strip()
     except Exception as err:
         return f"Gemini APIの呼び出しに失敗しました: {err}"
@@ -175,11 +191,36 @@ def _similarity(text1: str, text2: str) -> float:
     return SequenceMatcher(None, text1, text2).ratio()
 
 
+def generate_next_question(prev_answer: str, history: List["HistoryEntry"], provider: str) -> str:
+    """Return the next question using the specified generator."""
+    if provider == "template":
+        from typing import cast
+        from secl.qa_cycle import (
+            simulate_generate_next_question_from_answer,
+            HistoryEntry as SeHistoryEntry,
+        )
+        q, _ = simulate_generate_next_question_from_answer(
+            prev_answer, cast(List[SeHistoryEntry], history)
+        )
+        return q
+    prompt = (
+        f"あなたは研究用データ収集AIです。前の回答「{prev_answer}」を踏まえ、関連しつつも"
+        "テーマや視点を少し変えた新しい質問を1文生成してください。"
+    )
+    if provider == "openai":
+        return _call_openai(prompt, temperature=1.2, max_tokens=40)
+    if provider == "anthropic":
+        return _call_anthropic(prompt, temperature=1.2, max_tokens=40)
+    if provider == "gemini":
+        return _call_gemini(prompt, temperature=1.2, max_tokens=40)
+    return _dummy_response(prompt)
+
+
 # ---------------------------------------------------------------------------
 # Metric calculations
 # ---------------------------------------------------------------------------
 
-def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, float]:
+def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
     q_len = len(question)
     h_len = len(history)
@@ -193,7 +234,7 @@ def estimate_ugh_params(question: str, history: List["QaRecord"]) -> Dict[str, f
 def hybrid_por_score(
     params: Dict[str, float],
     question: str,
-    history: List["QaRecord"],
+    history: List["HistoryEntry"],
     *,
     w1: float | None = None,
     w2: float | None = None,
@@ -220,9 +261,9 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     return round(1.0 - _similarity(prev_answer, curr_answer), 3)
 
 
-def grv_score(answer: str) -> float:
+def grv_score(answer: str, *, mode: str = "simple") -> float:
     """Proxy to :func:`core.grv.grv_score`."""
-    return _grv_score(answer)
+    return _grv_score(answer, mode=mode)
 
 
 def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
@@ -236,13 +277,17 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # ---------------------------------------------------------------------------
 
 @dataclass
-class QaRecord:
+class HistoryEntry:
     question: str
     answer: str
     por: float
     delta_e: float
     grv: float
     timestamp: float = field(default_factory=time.time)
+
+# --- 互換エイリアス ------------
+QARecord = HistoryEntry
+# --------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +303,8 @@ def run_cycle(
     quiet: bool = False,
     summary: bool = False,
     jsonl_path: Path | None = None,
+    q_provider: str = "template",
+    grv_mode: str = "simple",
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -269,8 +316,12 @@ def run_cycle(
         CSV file path for history output.
     jsonl_path : Path | None, optional
         When provided, adopted records are also appended to this JSONL file.
+    q_provider : str, optional
+        Question generation provider (LLM or template).
+    grv_mode : str, optional
+        Mode for :func:`core.grv.grv_score`.
     """
-    history: List[QaRecord] = []
+    history: List[HistoryEntry] = []
     prev_answer: str | None = None
     executed = 0
 
@@ -282,6 +333,7 @@ def run_cycle(
         iter_range = range(steps)
 
     provider = os.getenv("AI_PROVIDER", "dummy")
+    q_prov = q_provider
 
     for idx in iter_range:
         if stdin_mode:
@@ -291,13 +343,13 @@ def run_cycle(
         elif interactive:
             question = input(f"質問{idx + 1}: ")
         else:
-            question = f"Q{idx + 1}"
+            question = generate_next_question(prev_answer or "", history, q_prov)
 
         answer = get_ai_response(question)
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
-        grv = grv_score(answer)
+        grv = grv_score(answer, mode=grv_mode)
 
         if not quiet:
             print(f"[AI応答] {answer}")
@@ -308,7 +360,7 @@ def run_cycle(
             print(f"【総合】{score:.3f} → {decision}")
 
         if adopted:
-            history.append(QaRecord(question, answer, por, de, grv))
+            history.append(HistoryEntry(question, answer, por, de, grv))
             if jsonl_path is not None:
                 rec_dict = {
                     "question": question,
@@ -368,10 +420,26 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument("--summary", action="store_true", help="print summary at end")
     parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
     parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
+    parser.add_argument(
+        "--q-provider",
+        choices=["openai", "anthropic", "gemini", "template"],
+        default="template",
+        help="question generation provider",
+    )
+    parser.add_argument(
+        "--grv-mode",
+        choices=["simple", "entropy"],
+        default="simple",
+        help="grv score mode",
+    )
 
     args = parser.parse_args(argv)
 
-    exp_id = args.exp_id or time.strftime("%Y%m%d-%H%M%S")
+    if args.exp_id:
+        exp_id = args.exp_id
+    else:
+        ts = time.strftime("%Y%m%d-%H%M%S")
+        exp_id = f"{ts}_q-{args.q_provider}_g-{args.grv_mode}"
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
@@ -398,7 +466,14 @@ def main(argv: List[str] | None = None) -> None:
         quiet=args.quiet,
         summary=args.summary,
         jsonl_path=output_jsonl,
+        q_provider=args.q_provider,
+        grv_mode=args.grv_mode,
     )
+
+# LLM質問+拡張ジャンプで300問収集
+# python facade/collector.py --auto -n 300 \
+#     --q-provider openai --grv-mode entropy \
+#     --quiet --summary
 
 
 if __name__ == "__main__":
