@@ -13,7 +13,7 @@ import random
 import time
 from typing import List
 
-import pandas as pd
+import pandas as pd  # type: ignore
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -64,7 +64,7 @@ def plot_heatmap(history: List[PorRecord]) -> None:
         aspect="auto",
         cmap="viridis",
         origin="lower",
-        extent=[0, len(por_values), 0.0, 1.0],
+        extent=(0, len(por_values), 0.0, 1.0),
     )
     plt.xlabel("Phase")
     plt.ylabel("PoR score")
