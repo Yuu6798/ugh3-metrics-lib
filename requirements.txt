@@ -3,3 +3,7 @@ pytest
 pandas
 seaborn
 mypy
+# Optional libraries for AI providers
+# openai - required for OpenAI API
+# anthropic - required for Anthropic API
+# google-generativeai - required for Google Gemini API

@@ -18,6 +18,7 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+import os
 
 from facade.trigger import por_trigger
 from core.grv import grv_score as _grv_score
@@ -39,9 +40,120 @@ ADOPT_TH: float = 0.45
 # Basic helpers
 # ---------------------------------------------------------------------------
 
-def get_ai_response(question: str) -> str:
-    """Return a deterministic AI response for the given question."""
+def _dummy_response(question: str) -> str:
+    """Return a deterministic fallback response."""
     return f"Answer for '{question}'"
+
+
+def _call_openai(question: str) -> str:
+    """Return an answer from OpenAI's API or a fallback if unavailable."""
+    # openai library is optional; install via `pip install openai`
+    try:
+        import openai
+    except Exception:
+        print("[info] openai library not installed; using dummy answer")
+        return _dummy_response(question)
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("[warning] OPENAI_API_KEY is not set; returning dummy answer")
+        return _dummy_response(question)
+
+    openai.api_key = api_key
+    try:
+        resp = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": question}],
+        )
+        return resp["choices"][0]["message"]["content"].strip()
+    except Exception as err:
+        print(f"[error] OpenAI API failed: {err}")
+        return _dummy_response(question)
+
+
+def _call_anthropic(question: str) -> str:
+    """Return an answer from Anthropic's API or a fallback."""
+    # anthropic library is optional; install via `pip install anthropic`
+    try:
+        import anthropic
+    except Exception:
+        print("[info] anthropic library not installed; using dummy answer")
+        return _dummy_response(question)
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("[warning] ANTHROPIC_API_KEY is not set; returning dummy answer")
+        return _dummy_response(question)
+
+    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        resp = client.messages.create(
+            model="claude-3-opus-20240229",
+            max_tokens=100,
+            messages=[{"role": "user", "content": question}],
+        )
+        return resp.content[0].text.strip()
+    except Exception as err:
+        print(f"[error] Anthropic API failed: {err}")
+        return _dummy_response(question)
+
+
+def _call_gemini(question: str) -> str:
+    """Return an answer from Google Gemini or a fallback."""
+    # google-generativeai library is optional; install via `pip install google-generativeai`
+    try:
+        from google.generativeai import configure, GenerativeModel
+    except Exception:
+        print("[info] google-generativeai library not installed; using dummy answer")
+        return _dummy_response(question)
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("[warning] GEMINI_API_KEY is not set; returning dummy answer")
+        return _dummy_response(question)
+
+    configure(api_key=api_key)
+    model = GenerativeModel("gemini-pro")
+    try:
+        resp = model.generate_content(question)
+        return resp.text.strip()
+    except Exception as err:
+        print(f"[error] Gemini API failed: {err}")
+        return _dummy_response(question)
+
+
+def get_ai_response(question: str, provider: str | None = None) -> str:
+    """Return an AI generated answer using the specified provider.
+
+    Parameters
+    ----------
+    question : str
+        User question to send to the AI.
+    provider : str | None, optional
+        Which AI service to use (``openai``, ``anthropic``, ``gemini``). If
+        ``None``, the environment variable ``AI_PROVIDER`` will be checked.
+        If no provider is found, a simple deterministic answer is returned.
+
+    Notes
+    -----
+    To add support for another provider, implement a new ``_call_*`` function
+    similar to the above examples and extend the mapping in this function.
+    """
+
+    prov = (provider or os.getenv("AI_PROVIDER", "dummy")).lower()
+    print(f"[AI provider] {prov}")
+
+    if prov == "openai":
+        return _call_openai(question)
+    if prov == "anthropic":
+        return _call_anthropic(question)
+    if prov == "gemini":
+        return _call_gemini(question)
+    if prov == "dummy":
+        return _dummy_response(question)
+
+    print(f"[error] Unsupported AI_PROVIDER '{prov}'. Using dummy answer.")
+    return _dummy_response(question)
 
 
 def _similarity(text1: str, text2: str) -> float:
