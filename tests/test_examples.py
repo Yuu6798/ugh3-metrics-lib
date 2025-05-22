@@ -3,21 +3,21 @@ matplotlib.use('Agg')
 
 def test_import_example_modules():
     import phase_map_demo
-    import por_deltae_grv_collector
-    import secl_qa_cycle
-    import history_evaluator
+    import facade.collector
+    import secl.qa_cycle
+    import core.history
 
 
 def test_scripts_run(tmp_path):
     import phase_map_demo
-    import por_deltae_grv_collector
-    import secl_qa_cycle
+    import facade.collector
+    import secl.qa_cycle
 
     # phase_map_demo main should run without errors
     phase_map_demo.main()
 
     # run a short cycle in the collector using the CLI in auto mode
-    por_deltae_grv_collector.main([
+    facade.collector.main([
         "--auto",
         "-n",
         "1",
@@ -26,12 +26,12 @@ def test_scripts_run(tmp_path):
     ])
 
     # run a single step of the QA cycle
-    secl_qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
+    secl.qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
 
 
 def test_run_cycle_generates_csv(tmp_path):
     """run_cycle should create a CSV with expected columns and rows."""
-    from por_deltae_grv_collector import run_cycle
+    from facade.collector import run_cycle
     out_file = tmp_path / "cycle.csv"
     steps = 2
     run_cycle(steps, out_file, interactive=False)

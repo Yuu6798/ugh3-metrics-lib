@@ -23,19 +23,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 
-CONFIG_PATH = Path(__file__).with_name("config.json")
-
-
-def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load configuration parameters from a JSON file."""
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            return json.load(fh)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Config file not found: {path}")
-
-
-CONFIG = load_config()
+from utils.config_loader import CONFIG
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)

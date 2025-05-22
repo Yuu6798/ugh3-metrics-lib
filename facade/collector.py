@@ -19,8 +19,8 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from por_trigger import por_trigger
-import grv_scoring
+from facade.trigger import por_trigger
+from core.grv import grv_score as _grv_score
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -87,8 +87,8 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
 
 
 def grv_score(answer: str) -> float:
-    """Proxy to :func:`grv_scoring.grv_score`."""
-    return grv_scoring.grv_score(answer)
+    """Proxy to :func:`core.grv.grv_score`."""
+    return _grv_score(answer)
 
 
 def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
