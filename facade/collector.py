@@ -16,13 +16,32 @@ import csv
 import time
 from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
+from math import log1p
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 import os
 import sys
 
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+    import numpy as np
+    _ST_MODEL = SentenceTransformer(
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
+    )
+except Exception:  # pragma: no cover - optional dependency may not be present
+    _ST_MODEL = None
+
+from utils.config_loader import MAX_VOCAB_CAP
+
+STOPWORDS: set[str] = set()
+_stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
+try:
+    with open(_stop_path, "r", encoding="utf-8") as sfh:
+        STOPWORDS.update(word.strip() for word in sfh if word.strip())
+except Exception:  # pragma: no cover - optional dependency
+    pass
+
 from facade.trigger import por_trigger
-from core.grv import grv_score as _grv_score
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -278,15 +297,46 @@ def hybrid_por_score(
 
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
-    """Return ΔE based on semantic difference between answers."""
+    """Return ΔE based on embedding cosine distance.
+
+    When the embedding model cannot be loaded, a simple length based
+    difference is used as a fallback.
+    """
     if prev_answer is None:
         return 0.0
-    return round(1.0 - _similarity(prev_answer, curr_answer), 3)
+    if _ST_MODEL is not None:
+        try:
+            v1 = _ST_MODEL.encode(prev_answer)
+            v2 = _ST_MODEL.encode(curr_answer)
+            num = float(np.dot(v1, v2))
+            denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
+            if denom == 0:
+                raise ValueError("zero norm")
+            cos_sim = num / denom
+            diff = max(0.0, 1.0 - cos_sim)
+            return round(min(1.0, diff), 3)
+        except Exception:
+            pass
+    diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
+    return round(diff, 3)
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
-    """Proxy to :func:`core.grv.grv_score`."""
-    return _grv_score(answer, mode=mode)
+    """Return log-scaled grv based on vocabulary size.
+
+    Stopwords listed in ``data/jp_stop.txt`` are ignored.  The score is
+    computed as ``log(1+|V|) / log(1+cap)`` where ``cap`` is the dynamic
+    vocabulary limit ``MAX_VOCAB_CAP`` from :mod:`utils.config_loader`.
+    """
+    if isinstance(answer, str):
+        tokens = [t for t in answer.split() if t not in STOPWORDS]
+    else:
+        tokens = [t for t in answer if t not in STOPWORDS]
+    vocab = set(tokens)
+    score = 0.0
+    if vocab:
+        score = log1p(len(vocab)) / log1p(MAX_VOCAB_CAP)
+    return round(min(1.0, score), 3)
 
 
 def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
