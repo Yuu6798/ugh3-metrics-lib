@@ -39,7 +39,7 @@ def get_sbert() -> SentenceTransformer:
     global _ST_MODEL
     if _ST_MODEL is None:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
-    return cast(SentenceTransformer, _ST_MODEL)
+    return _ST_MODEL
 
 LEN_COEFF = 0.1  # 旧 0.5
 COS_COEFF = 0.7
