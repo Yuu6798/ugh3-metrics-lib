@@ -46,27 +46,33 @@ def _dummy_response(question: str) -> str:
 
 
 def _call_openai(question: str) -> str:
-    """Return an answer from OpenAI's API or a friendly error message."""
-    # openai library is optional; install via `pip install openai`
-    # Obtain an API key from https://platform.openai.com/account/api-keys
-    # and set it to the OPENAI_API_KEY environment variable.
+    """Return an answer from OpenAI's API using the v1 ``Client`` interface."""
+
+    # ``openai`` is optional. Install via `pip install openai>=1.0.0` if needed
+    # and obtain an API key at https://platform.openai.com/account/api-keys
     try:
-        import openai  # type: ignore[import-not-found]
+        # v1 では ``OpenAI`` クラスからクライアントを生成します
+        from openai import OpenAI  # type: ignore[import-not-found]
     except ImportError:
         return "OpenAIプロバイダは利用できません（ライブラリ未インストール）"
 
+    # Read the API key from the OPENAI_API_KEY environment variable
     api_key = os.getenv("OPENAI_API_KEY")
     if not isinstance(api_key, str) or not api_key:
         return "OpenAI APIキーが設定されていません。"
 
-    openai.api_key = api_key
+    # Create the client instance with the API key
+    client = OpenAI(api_key=api_key)
+
     try:
-        resp: Any = openai.ChatCompletion.create(
+        # Ask the model and return only the text part of the response
+        resp: Any = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": question}],
         )
-        return str(resp["choices"][0]["message"]["content"]).strip()
+        return str(resp.choices[0].message.content).strip()
     except Exception as err:
+        # In case of failure, return a beginner-friendly error message
         return f"OpenAI APIの呼び出しに失敗しました: {err}"
 
 
@@ -135,6 +141,9 @@ def get_ai_response(question: str, provider: str | None = None) -> str:
     -----
     To add support for another provider, implement a new ``_call_*`` function
     similar to the above examples and extend the mapping in this function.
+
+    OpenAI API access uses ``openai>=1.0.0`` with the ``Client`` class. See
+    ``requirements.txt`` for an installation example.
     """
 
     raw_provider: str = provider or os.getenv("AI_PROVIDER") or "dummy"
