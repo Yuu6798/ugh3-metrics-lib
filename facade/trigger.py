@@ -7,11 +7,21 @@ based on the descriptions provided in design_sketch.py and spec.md.
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 from secl.qa_cycle import main_qa_cycle
 
 
+class PorTriggerResult(TypedDict):
+    """Return type for :func:`por_trigger`."""
 
-def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict:
+    E_prime: float
+    score: float
+    triggered: bool
+
+
+
+def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> PorTriggerResult:
     """Calculate whether a PoR event should be triggered.
 
     Parameters
@@ -31,7 +41,7 @@ def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: 
 
     Returns
     -------
-    dict
+    PorTriggerResult
         Dictionary containing ``"E_prime"``, ``"score"``, and ``"triggered"``
         keys representing intermediate values and the final boolean result.
     """
