@@ -136,20 +136,20 @@ def update_score_threshold(delta_e_history: List[float], base_threshold: float =
 
 
 def simulate_grv_gain_with_jump(current_state: Dict[str, Any], base: str = "ジャンプ") -> float:
-    current_grv = float(current_state["grv"])
+    grv_val: float = float(current_state["grv"])
     base_vocab = set(current_state["vocab_set"])
     added = {base + str(random.randint(100,999))}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - current_grv
+    gain = min(1.0, len(simulated)/30.0) - grv_val
     return gain
 
 
 def simulate_grv_gain_with_external_info(current_state: Dict[str, Any]) -> float:
-    current_grv = float(current_state["grv"])
+    grv_val: float = float(current_state["grv"])
     base_vocab = set(current_state["vocab_set"])
     added = {simulate_external_knowledge()}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - current_grv
+    gain = min(1.0, len(simulated)/30.0) - grv_val
     return gain
 
 
