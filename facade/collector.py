@@ -38,7 +38,7 @@ def get_sbert() -> SentenceTransformer:
     global _ST_MODEL
     if _ST_MODEL is None:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
-    return cast(SentenceTransformer, _ST_MODEL)
+    return _ST_MODEL
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -338,7 +338,7 @@ def grv_score(answer: str, *, mode: str = "simple") -> float:
     vocabulary limit ``MAX_VOCAB_CAP`` from :mod:`utils.config_loader`.
     """
     if isinstance(answer, str):
-        tokens = [t for t in answer.split() if t not in STOPWORDS]
+        tokens: list[str] = [t for t in answer.split() if t not in STOPWORDS]
     else:
         tokens = [t for t in answer if t not in STOPWORDS]
     vocab = set(tokens)
