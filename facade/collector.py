@@ -18,18 +18,19 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import os
 import sys
 
 try:
-    from sentence_transformers import SentenceTransformer  # type: ignore
+    from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
     import numpy as np
-    _ST_MODEL = SentenceTransformer(
-        "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
-    )
 except Exception:  # pragma: no cover - optional dependency may not be present
-    _ST_MODEL = None
+    SentenceTransformer = None
+    np = None  # type: ignore[assignment]
+
+# SBERT モデルは遅延ロードする
+transformer: Optional[SentenceTransformer] = None
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -302,12 +303,17 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     When the embedding model cannot be loaded, a simple length based
     difference is used as a fallback.
     """
+    global transformer
     if prev_answer is None:
         return 0.0
-    if _ST_MODEL is not None:
+    if SentenceTransformer is not None and transformer is None:
+        transformer = SentenceTransformer(
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
+        )
+    if transformer is not None and np is not None:
         try:
-            v1 = _ST_MODEL.encode(prev_answer)
-            v2 = _ST_MODEL.encode(curr_answer)
+            v1 = transformer.encode(prev_answer)
+            v2 = transformer.encode(curr_answer)
             num = float(np.dot(v1, v2))
             denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
             if denom == 0:
@@ -379,6 +385,7 @@ def run_cycle(
     q_provider: str = "openai",
     ai_provider: str = "openai",
     grv_mode: str = "simple",
+    max_len: int | None = None,
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -396,6 +403,9 @@ def run_cycle(
         Provider used for answer generation.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
+    max_len : int | None, optional
+        When provided, generated questions and answers are truncated to this
+        length.
     """
     history: List[HistoryEntry] = []
     prev_answer: str | None = None
@@ -421,7 +431,12 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov)
 
+        if max_len is not None and len(question) > max_len:
+            question = question[:max_len] + "…"
+
         answer = get_ai_response(question, provider=provider)
+        if max_len is not None and len(answer) > max_len:
+            answer = answer[:max_len] + "…"
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
@@ -514,6 +529,12 @@ def main(argv: List[str] | None = None) -> None:
         default="simple",
         help="grv score mode",
     )
+    parser.add_argument(
+        "--max-len",
+        type=int,
+        default=None,
+        help="truncate generated text to this length",
+    )
 
     args = parser.parse_args(argv)
 
@@ -551,6 +572,7 @@ def main(argv: List[str] | None = None) -> None:
         q_provider=args.q_provider,
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
+        max_len=args.max_len,
     )
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）

@@ -21,7 +21,20 @@ import time
 from dataclasses import dataclass, field, asdict
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
+
+try:
+    from sentence_transformers import SentenceTransformer, util  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover - optional dependency
+    SentenceTransformer = None
+    util = None
+
+# SBERT は初回利用時にロードする
+transformer: Optional[SentenceTransformer] = None
+
+LEN_COEFF = 0.1  # 旧 0.5
+COS_COEFF = 0.7
+RAND_COEFF = 0.2
 
 from utils.config_loader import CONFIG
 
@@ -78,12 +91,24 @@ def is_duplicate_question(question: str, history_list: List[HistoryEntry]) -> bo
     return False
 
 
-def simulate_delta_e(current_q: str, next_q: str, answer: str) -> float:
-    q2q = abs(len(current_q) - len(next_q)) / 30.0
-    q2a = 1.0 - SequenceMatcher(None, current_q, answer).ratio()
-    random_factor = random.uniform(0.1, 0.8)
-    delta_e_jump = min(1.0, 0.5 * q2q + 0.3 * q2a + 0.2 * random_factor)
-    return round(delta_e_jump, 3)
+def simulate_delta_e(prev_q: str, curr_q: str, answer: str) -> float:
+    """Return simulated ΔE using SBERT cosine distance as main factor."""
+    global transformer
+    q_len_gap = abs(len(prev_q) - len(curr_q)) / 30.0
+
+    sem_gap = 0.3
+    if SentenceTransformer is not None:
+        if transformer is None:
+            transformer = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
+        assert transformer is not None
+        try:
+            sem_gap = 1.0 - float(util.cos_sim(transformer.encode(prev_q), transformer.encode(answer)))
+        except Exception:
+            sem_gap = 1.0 - SequenceMatcher(None, prev_q, answer).ratio()
+
+    rand = random.uniform(0.1, 0.8)
+    delta_e = min(1.0, LEN_COEFF * q_len_gap + COS_COEFF * sem_gap + RAND_COEFF * rand)
+    return round(delta_e, 3)
 
 
 def simulate_generate_answer(question: str) -> str:
