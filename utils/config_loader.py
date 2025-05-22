@@ -16,5 +16,6 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
 
 
 CONFIG: Dict[str, Any] = load_config()
+MAX_VOCAB_CAP: int = int(CONFIG.get("MAX_VOCAB_CAP", 50))
 
-__all__ = ["load_config", "CONFIG"]
+__all__ = ["load_config", "CONFIG", "MAX_VOCAB_CAP"]
