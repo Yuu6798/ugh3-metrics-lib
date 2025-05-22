@@ -4,6 +4,6 @@ pandas
 seaborn
 mypy
 # Optional AI provider libraries (uncomment to enable)
-# openai
+# openai>=1.0.0  # for OpenAI API access
 # anthropic
 # google-generativeai
