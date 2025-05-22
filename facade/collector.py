@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from facade.trigger import por_trigger
+from design_sketch import PorTriggerResult
 from core.grv import grv_score as _grv_score
 
 # ---------------------------------------------------------------------------
@@ -69,8 +70,11 @@ def hybrid_por_score(
     params: Dict[str, Any], question: str, history: List["QaRecord"], *, w1: float = 0.6, w2: float = 0.4
 ) -> float:
     """Return PoR score based on UGHer model and semantic similarity."""
-    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
-    por_model = trig["score"] * (1 - params["D"])
+    trig: PorTriggerResult = por_trigger(
+        params["q"], params["s"], params["t"], params["phi_C"], params["D"]
+    )
+    d_val: float = float(params["D"])
+    por_model = trig["score"] * (1 - d_val)
     if history:
         max_sim = max(_similarity(question, h.question) for h in history)
         por_sim = 1.0 - max_sim

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from secl.qa_cycle import main_qa_cycle
 
+from design_sketch import PorTriggerResult
 
 
-def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> dict:
+
+def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> PorTriggerResult:
     """Calculate whether a PoR event should be triggered.
 
     Parameters
@@ -31,7 +33,7 @@ def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: 
 
     Returns
     -------
-    dict
+    PorTriggerResult
         Dictionary containing ``"E_prime"``, ``"score"``, and ``"triggered"``
         keys representing intermediate values and the final boolean result.
     """

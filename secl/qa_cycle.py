@@ -139,7 +139,8 @@ def simulate_grv_gain_with_jump(current_state: Dict[str, Any], base: str = "ジ�
     base_vocab = set(current_state["vocab_set"])
     added = {base + str(random.randint(100,999))}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - current_state["grv"]
+    grv_val: float = float(current_state["grv"])
+    gain = min(1.0, len(simulated)/30.0) - grv_val
     return gain
 
 
@@ -147,7 +148,8 @@ def simulate_grv_gain_with_external_info(current_state: Dict[str, Any]) -> float
     base_vocab = set(current_state["vocab_set"])
     added = {simulate_external_knowledge()}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - current_state["grv"]
+    grv_val: float = float(current_state["grv"])
+    gain = min(1.0, len(simulated)/30.0) - grv_val
     return gain
 
 
@@ -319,6 +321,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     grv_history: List[float] = []
     score_threshold = BASE_SCORE_THRESHOLD
     current_question = "意識はどこから生まれるか？"
+    prev_question: str = current_question
     for step in range(n_steps):
         print(f"\n--- Step {step+1} ---")
         answer = simulate_generate_answer(current_question)
