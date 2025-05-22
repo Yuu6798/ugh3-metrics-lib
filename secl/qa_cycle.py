@@ -153,10 +153,15 @@ def simulate_grv_gain_with_external_info(current_state: Dict[str, Any]) -> float
     return gain
 
 
-def select_action_for_grv_jump(current_state: Dict[str, Any]) -> str:
-    jump_gain = simulate_grv_gain_with_jump(current_state)
-    ext_gain = simulate_grv_gain_with_external_info(current_state)
-    return "jump" if jump_gain >= ext_gain else "external"
+def select_action_for_jump(state: Dict[str, Any]) -> str:
+    """Return "jump" or "external" based on stagnation signals."""
+    if state.get("low_por"):
+        return "external"
+    if state.get("high_delta"):
+        return "jump"
+    if state.get("stagnate_grv"):
+        return random.choice(["jump", "external"])
+    return "jump"
 
 
 def record_to_log(history_list: List[HistoryEntry], entry: HistoryEntry) -> List[HistoryEntry]:
@@ -320,10 +325,12 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     delta_e_history: List[float] = []
     grv_history: List[float] = []
     score_threshold = BASE_SCORE_THRESHOLD
+    jump_cooldown = 0
     current_question = "意識はどこから生まれるか？"
     prev_question: str = current_question
     for step in range(n_steps):
         print(f"\n--- Step {step+1} ---")
+        jump_cooldown = max(0, jump_cooldown - 1)
         answer = simulate_generate_answer(current_question)
         temp_entry = HistoryEntry(
             current_question,
@@ -342,17 +349,26 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
             delta_e = simulate_delta_e(prev_question, current_question, answer)
         delta_e_history.append(delta_e)
         score_threshold = update_score_threshold(delta_e_history, BASE_SCORE_THRESHOLD)
-        stagnation = is_grv_stagnation(grv_history)
-        if stagnation and step > 0:
-            print("  [grv停滞検知] → 意味的ジャンプor外部注入判定中...")
-            state = {'grv': grv, 'vocab_set': vocab_set}
-            action = select_action_for_grv_jump(state)
+        stagnate_grv = is_grv_stagnation(grv_history)
+        low_por = history_list[-1].score < 0.25 if history_list else False
+        high_delta = history_list[-1].delta_e > 0.85 if history_list else False
+        stagnation = low_por or high_delta or stagnate_grv
+        if stagnation and step > 0 and jump_cooldown == 0:
+            print("  [停滞検知] → 意味的ジャンプor外部注入判定中...")
+            state = {
+                'low_por': low_por,
+                'high_delta': high_delta,
+                'stagnate_grv': stagnate_grv,
+            }
+            action = select_action_for_jump(state)
             if action == 'jump':
                 next_question = f"(ジャンプ){current_question}＋{random.choice(['変革','未知','分岐'])}#{random.randint(1000,9999)}"
                 ext_flag = False
+                jump_cooldown = 3
             else:
                 next_question = f"(外部注入){simulate_external_knowledge()}#{random.randint(1000,9999)}"
                 ext_flag = True
+                jump_cooldown = 3
         else:
             next_question, ext_flag = simulate_generate_next_question_from_answer(answer, history_list, epsilon=EPS_BASE)
         novelty = novelty_score(next_question, history_list)
