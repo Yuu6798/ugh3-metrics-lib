@@ -22,6 +22,9 @@ from typing import Any, Dict, List, Tuple, Optional, cast
 import os
 import sys
 
+from utils.config_loader import MAX_VOCAB_CAP
+from facade.trigger import por_trigger
+
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
     import numpy as np
@@ -40,8 +43,6 @@ def get_sbert() -> SentenceTransformer:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
     return cast(SentenceTransformer, _ST_MODEL)
 
-from utils.config_loader import MAX_VOCAB_CAP
-
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
 try:
@@ -49,8 +50,6 @@ try:
         STOPWORDS.update(word.strip() for word in sfh if word.strip())
 except Exception:  # pragma: no cover - optional dependency
     pass
-
-from facade.trigger import por_trigger
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -416,7 +415,7 @@ def run_cycle(
 
     # optional progress bar
     try:
-        from tqdm import tqdm  # type: ignore
+        from tqdm import tqdm  # type: ignore[import-untyped]
         iter_range = tqdm(range(steps), disable=quiet)
     except Exception:
         iter_range = range(steps)

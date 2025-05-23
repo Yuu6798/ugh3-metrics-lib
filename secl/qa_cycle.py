@@ -21,8 +21,10 @@ import time
 from dataclasses import dataclass, field, asdict
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 import os
+
+from utils.config_loader import CONFIG
 
 try:
     from sentence_transformers import SentenceTransformer, util  # type: ignore[import-not-found]
@@ -44,8 +46,6 @@ def get_sbert() -> SentenceTransformer:
 LEN_COEFF = 0.1  # 旧 0.5
 COS_COEFF = 0.7
 RAND_COEFF = 0.2
-
-from utils.config_loader import CONFIG
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
