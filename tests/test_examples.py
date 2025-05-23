@@ -1,14 +1,14 @@
 import matplotlib
-matplotlib.use('Agg')
+from pathlib import Path
+
+matplotlib.use("Agg")
+
 
 def test_import_example_modules() -> None:
-    import phase_map_demo
-    import facade.collector
-    import secl.qa_cycle
-    import core.history
-
-
-from pathlib import Path
+    import phase_map_demo  # noqa: F401
+    import facade.collector  # noqa: F401
+    import secl.qa_cycle  # noqa: F401
+    import core.history  # noqa: F401
 
 
 def test_scripts_run(tmp_path: Path) -> None:
