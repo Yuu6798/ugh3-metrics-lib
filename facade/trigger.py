@@ -9,6 +9,10 @@ from __future__ import annotations
 from design_sketch import PorTriggerResult
 from secl.qa_cycle import main_qa_cycle
 
+def noop() -> None:
+    """何もしないダミー関数。"""
+    return None
+
 def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: float = 0.6) -> PorTriggerResult:
     """Calculate whether a PoR event should be triggered.
 
@@ -49,4 +53,4 @@ def por_trigger(q: float, s: float, t: float, phi_C: float, D: float, *, theta: 
     }
 
 
-__all__ = ["por_trigger", "main_qa_cycle"]
+__all__ = ["por_trigger", "main_qa_cycle", "noop"]
