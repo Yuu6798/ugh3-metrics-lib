@@ -5,7 +5,10 @@ from __future__ import annotations
 import os
 import random
 from difflib import SequenceMatcher
-from typing import Optional, cast, Any
+from typing import Iterable, Optional, TYPE_CHECKING, cast, Any
+
+if TYPE_CHECKING:  # pragma: no cover - for type hints only
+    from secl.qa_cycle import HistoryEntry
 
 try:
     from sentence_transformers import SentenceTransformer, util  # type: ignore[import-not-found]
@@ -13,7 +16,9 @@ except Exception:  # pragma: no cover - optional dependency
     SentenceTransformer = cast(Any, None)
     util = None
 
-SBERT_MODEL_ID = os.getenv("SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2")
+SBERT_MODEL_ID = os.getenv(
+    "SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2"
+)
 _ST_MODEL: Optional[SentenceTransformer] = None
 
 
@@ -24,10 +29,36 @@ def get_sbert() -> SentenceTransformer:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
     return cast(SentenceTransformer, _ST_MODEL)
 
+
 # --- ΔE 計算係数 ---
 LEN_COEFF = 0.1  # 旧 0.5
 COS_COEFF = 0.7
 RAND_COEFF = 0.2
+
+# novel question duplicate threshold
+DUPLICATE_THRESHOLD = 0.9
+
+
+def novelty_score(question: str, history: Iterable["HistoryEntry"]) -> float:
+    """Return novelty score of ``question`` against previous history."""
+    if not list(history):
+        return 1.0
+    max_sim = max(SequenceMatcher(None, question, h.question).ratio() for h in history)
+    penalty = 0.5 * max_sim
+    return max(0.0, 1.0 - penalty)
+
+
+def is_duplicate_question(question: str, history: Iterable["HistoryEntry"]) -> bool:
+    """Return ``True`` if ``question`` is similar to any history question."""
+    for h in history:
+        if SequenceMatcher(None, question, h.question).ratio() >= DUPLICATE_THRESHOLD:
+            return True
+    return False
+
+
+def duplicate_question(question: str, history: Iterable["HistoryEntry"]) -> bool:
+    """Alias of :func:`is_duplicate_question` for compatibility."""
+    return is_duplicate_question(question, history)
 
 
 def simulate_delta_e(prev_q: str, curr_q: str, answer: str) -> float:
@@ -36,7 +67,9 @@ def simulate_delta_e(prev_q: str, curr_q: str, answer: str) -> float:
 
     sem_gap = 1.0
     try:
-        sem_gap = 1.0 - float(util.cos_sim(get_sbert().encode(prev_q), get_sbert().encode(answer)))
+        sem_gap = 1.0 - float(
+            util.cos_sim(get_sbert().encode(prev_q), get_sbert().encode(answer))
+        )
     except Exception:
         sem_gap = 1.0 - SequenceMatcher(None, prev_q, answer).ratio()
 
@@ -45,4 +78,13 @@ def simulate_delta_e(prev_q: str, curr_q: str, answer: str) -> float:
     return round(delta_e, 3)
 
 
-__all__ = ["simulate_delta_e", "LEN_COEFF", "COS_COEFF", "RAND_COEFF"]
+__all__ = [
+    "novelty_score",
+    "is_duplicate_question",
+    "duplicate_question",
+    "simulate_delta_e",
+    "LEN_COEFF",
+    "COS_COEFF",
+    "RAND_COEFF",
+    "DUPLICATE_THRESHOLD",
+]
