@@ -1,7 +1,16 @@
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 def test_imports() -> None:
-    import facade.trigger
-    import core.deltae
-    import core.grv
+    import facade.trigger as _ft
+    import core.deltae as _de
+    import core.grv as _grv
+
+    assert _ft
+    assert _de
+    assert _grv

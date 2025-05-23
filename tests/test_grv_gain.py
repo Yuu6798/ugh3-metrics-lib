@@ -1,8 +1,12 @@
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from __future__ import annotations
 
+import sys
+from pathlib import Path
 import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from secl.qa_cycle import simulate_grv_gain_with_jump, simulate_grv_gain_with_external_info
+
 
 class TestGrvGain(unittest.TestCase):
     def test_gain_returns_float(self) -> None:
@@ -12,5 +16,6 @@ class TestGrvGain(unittest.TestCase):
         self.assertIsInstance(gain_jump, float)
         self.assertIsInstance(gain_ext, float)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
