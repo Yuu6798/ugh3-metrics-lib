@@ -22,6 +22,9 @@ from typing import Any, Dict, List, Tuple, Optional, cast
 import os
 import sys
 
+from utils.config_loader import MAX_VOCAB_CAP
+from facade.trigger import por_trigger
+
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
     import numpy as np
@@ -40,7 +43,6 @@ def get_sbert() -> SentenceTransformer:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
     return cast(SentenceTransformer, _ST_MODEL)
 
-from utils.config_loader import MAX_VOCAB_CAP
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -49,8 +51,6 @@ try:
         STOPWORDS.update(word.strip() for word in sfh if word.strip())
 except Exception:  # pragma: no cover - optional dependency
     pass
-
-from facade.trigger import por_trigger
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -71,6 +71,7 @@ POR_W2: float = 0.4
 # ---------------------------------------------------------------------------
 # Basic helpers
 # ---------------------------------------------------------------------------
+
 
 def _dummy_response(question: str) -> str:
     """Return a deterministic fallback response."""
@@ -240,9 +241,7 @@ def _similarity(text1: str, text2: str) -> float:
     return SequenceMatcher(None, text1, text2).ratio()
 
 
-def generate_next_question(
-    prev_answer: str, history: List["HistoryEntry"], provider: str
-) -> str:
+def generate_next_question(prev_answer: str, history: List["HistoryEntry"], provider: str) -> str:
     """Return the next question using the specified LLM provider."""
     if provider == "template":
         from typing import cast
@@ -250,6 +249,7 @@ def generate_next_question(
             simulate_generate_next_question_from_answer,
             HistoryEntry as SeHistoryEntry,
         )
+
         q, _ = simulate_generate_next_question_from_answer(
             prev_answer, cast(List[SeHistoryEntry], history)
         )
@@ -271,6 +271,7 @@ def generate_next_question(
 # Metric calculations
 # ---------------------------------------------------------------------------
 
+
 def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
     q_len = len(question)
@@ -281,6 +282,7 @@ def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[st
     phi_C = 0.8
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
+
 
 def hybrid_por_score(
     params: Dict[str, float],
@@ -358,6 +360,7 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HistoryEntry:
     question: str
@@ -367,6 +370,7 @@ class HistoryEntry:
     grv: float
     timestamp: float = field(default_factory=time.time)
 
+
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -375,6 +379,7 @@ QARecord = HistoryEntry
 # ---------------------------------------------------------------------------
 # Cycle logic
 # ---------------------------------------------------------------------------
+
 
 def run_cycle(
     steps: int,
@@ -416,7 +421,8 @@ def run_cycle(
 
     # optional progress bar
     try:
-        from tqdm import tqdm  # type: ignore
+        from tqdm import tqdm  # type: ignore[import-untyped]
+
         iter_range = tqdm(range(steps), disable=quiet)
     except Exception:
         iter_range = range(steps)
@@ -491,6 +497,7 @@ def run_cycle(
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
@@ -548,7 +555,9 @@ def main(argv: List[str] | None = None) -> None:
         exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
+    output_csv = output_dir / (
+        args.output.name if isinstance(args.output, Path) else "por_history.csv"
+    )
     output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
 
     if args.w_por is not None:
@@ -577,6 +586,7 @@ def main(argv: List[str] | None = None) -> None:
         grv_mode=args.grv_mode,
         max_len=args.max_len,
     )
+
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary

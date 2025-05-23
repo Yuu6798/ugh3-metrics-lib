@@ -2,6 +2,8 @@ from .deltae import deltae_score
 from .grv import grv_score
 from .history import evaluate_record, GOOD, OKAY, BAD
 
+from . import deltae, grv
+
 __all__ = [
     "deltae_score",
     "grv_score",
@@ -9,4 +11,6 @@ __all__ = [
     "GOOD",
     "OKAY",
     "BAD",
+    "deltae",
+    "grv",
 ]

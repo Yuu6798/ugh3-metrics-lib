@@ -1,5 +1,7 @@
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import unittest
 
@@ -8,17 +10,17 @@ from secl.qa_cycle import novelty_score, is_duplicate_question, HistoryEntry
 
 class TestMetrics(unittest.TestCase):
     def test_novelty_empty_history(self) -> None:
-        self.assertEqual(novelty_score('q', []), 1.0)
+        self.assertEqual(novelty_score("q", []), 1.0)
 
     def test_novelty_similarity_penalty(self) -> None:
-        history = [HistoryEntry('hello world', 'ans', 0, 0, 0, False, False)]
-        result = novelty_score('hello world', history)
+        history = [HistoryEntry("hello world", "ans", 0, 0, 0, False, False)]
+        result = novelty_score("hello world", history)
         self.assertLess(result, 1.0)
 
     def test_duplicate_detection(self) -> None:
-        history = [HistoryEntry('what is life?', 'ans', 0, 0, 0, False, False)]
-        self.assertTrue(is_duplicate_question('what is life?', history))
-        self.assertFalse(is_duplicate_question('another', history))
+        history = [HistoryEntry("what is life?", "ans", 0, 0, 0, False, False)]
+        self.assertTrue(is_duplicate_question("what is life?", history))
+        self.assertFalse(is_duplicate_question("another", history))
 
     def test_delta_e_range(self) -> None:
         import random
@@ -32,5 +34,5 @@ class TestMetrics(unittest.TestCase):
         self.assertLessEqual(avg, 0.65)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

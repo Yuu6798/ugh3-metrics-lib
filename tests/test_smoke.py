@@ -1,7 +1,9 @@
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from facade import trigger
+from core import deltae, grv
+
 
 def test_imports() -> None:
-    import facade.trigger
-    import core.deltae
-    import core.grv
+    """Ensure top-level modules are importable."""
+    _ = trigger
+    _ = deltae
+    _ = grv
