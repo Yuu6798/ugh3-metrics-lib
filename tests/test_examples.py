@@ -4,7 +4,7 @@ matplotlib.use('Agg')
 def test_import_example_modules() -> None:
     import phase_map_demo
     import facade.collector
-    import secl.qa_cycle
+    import ugh3_metrics_lib.secl.qa_cycle as qa_cycle
     import core.history
 
 
@@ -14,7 +14,7 @@ from pathlib import Path
 def test_scripts_run(tmp_path: Path) -> None:
     import phase_map_demo
     import facade.collector
-    import secl.qa_cycle
+    import ugh3_metrics_lib.secl.qa_cycle as qa_cycle
 
     # phase_map_demo main should run without errors
     phase_map_demo.main()
@@ -29,7 +29,7 @@ def test_scripts_run(tmp_path: Path) -> None:
     ])
 
     # run a single step of the QA cycle
-    secl.qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
+    qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
 
 
 def test_run_cycle_generates_csv(tmp_path: Path) -> None:

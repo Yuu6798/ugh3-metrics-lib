@@ -2,31 +2,29 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pip install -v -r requirements.txt
-      - name: Sanity-check deps
+          python-version: '3.11'
+      - name: Install
         run: |
-          test -f requirements.txt || { echo "❌ requirements.txt not found"; exit 1; }
-          python - <<'PY'
-          import importlib, sys
-          for pkg in ("matplotlib", "pytest"):
-              try:
-                  m = importlib.import_module(pkg)
-                  print(f"[OK] {pkg} {m.__version__}")
-              except ModuleNotFoundError:
-                  print(f"❌  {pkg} NOT INSTALLED")
-                  sys.exit(1)
-          PY
-      - run: python -c "import matplotlib"
-      - run: pytest -q
+          pip install -r requirements.txt
+          pip install pre-commit ruff
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+      - name: Run ruff
+        run: ruff .
+      - name: Run mypy
+        run: mypy --strict
+      - name: Run pytest
+        run: pytest -q
