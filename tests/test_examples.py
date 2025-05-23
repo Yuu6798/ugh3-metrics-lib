@@ -1,5 +1,7 @@
 import matplotlib
-matplotlib.use('Agg')
+from pathlib import Path
+
+matplotlib.use("Agg")
 
 def test_import_example_modules() -> None:
     import phase_map_demo
@@ -7,8 +9,7 @@ def test_import_example_modules() -> None:
     import secl.qa_cycle
     import core.history
 
-
-from pathlib import Path
+    assert phase_map_demo and facade.collector and secl.qa_cycle and core.history
 
 
 def test_scripts_run(tmp_path: Path) -> None:
