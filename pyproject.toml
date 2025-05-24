@@ -1,44 +1,15 @@
-[tool.poetry]
-name        = "por-deltae-lib"
-version     = "0.1.0"
-description = "PoR / ΔE / grv metrics library"
-authors     = ["Yuu6798 <mail@example.com>"]
-
-packages = [
-  {include = "core",             from = "src"},
-  { include = "facade", from = "src/ugh3_metrics_lib" },
-  { include = "secl",   from = "src/ugh3_metrics_lib" },
-  {include = "phase_map_demo",   from = "src"},
-  {include = "ugh3_metrics_lib", from = "src"}
+[project]
+name = "por-deltae-lib"
+version = "0.1.0"
+description = "PoR・ΔE OSS reference implementation"
+authors = [
+  { name = "Yuu6798", email = "kkoo6798@gmail.com" },
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-pandas = "^2.2.2"
-numpy = "^2.2.6"
-
-[tool.poetry.group.dev.dependencies]
-pytest     = "^7.4.4"
-matplotlib = "^3.10.3"
-
-# ---- 静的解析／コードフォーマッタ設定 ----
-[tool.mypy]
-python_version           = "3.11"
-strict                   = true
-warn_unused_ignores      = true
-disallow_any_generics    = true
-disallow_any_untyped_defs = true
-no_implicit_optional     = true
-
-[tool.ruff]
-line-length    = 100
-extend-select  = ["PGH"]
-extend-ignore  = ["ANN101"]
-# -------------------------------------------
-
-[tool.poetry.scripts]
-phase-map-demo = "phase_map_demo.app:main"
+requires-python = ">=3.8"
 
 [build-system]
-requires      = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+dev = ["sentence-transformers>=0.12.0"]

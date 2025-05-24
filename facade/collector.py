@@ -29,9 +29,7 @@ except Exception:  # pragma: no cover - optional dependency may not be present
     SentenceTransformer = cast(Any, None)
     import numpy as np
 
-SBERT_MODEL_ID = os.getenv(
-    "SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2"
-)
+SBERT_MODEL_ID = os.getenv("SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2")
 _ST_MODEL: Optional[SentenceTransformer] = None
 
 
@@ -41,7 +39,6 @@ def get_sbert() -> SentenceTransformer:
     if _ST_MODEL is None:
         _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
     return cast(SentenceTransformer, _ST_MODEL)
-
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -74,7 +71,6 @@ POR_W2: float = 0.4
 # ---------------------------------------------------------------------------
 # Basic helpers
 # ---------------------------------------------------------------------------
-
 
 def _dummy_response(question: str) -> str:
     """Return a deterministic fallback response."""
@@ -254,7 +250,6 @@ def generate_next_question(
             simulate_generate_next_question_from_answer,
             HistoryEntry as SeHistoryEntry,
         )
-
         q, _ = simulate_generate_next_question_from_answer(
             prev_answer, cast(List[SeHistoryEntry], history)
         )
@@ -276,10 +271,7 @@ def generate_next_question(
 # Metric calculations
 # ---------------------------------------------------------------------------
 
-
-def estimate_ugh_params(
-    question: str, history: List["HistoryEntry"]
-) -> Dict[str, float]:
+def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
     q_len = len(question)
     h_len = len(history)
@@ -289,7 +281,6 @@ def estimate_ugh_params(
     phi_C = 0.8
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
-
 
 def hybrid_por_score(
     params: Dict[str, float],
@@ -304,9 +295,7 @@ def hybrid_por_score(
         w1 = POR_W1
     if w2 is None:
         w2 = POR_W2
-    trig = por_trigger(
-        params["q"], params["s"], params["t"], params["phi_C"], params["D"]
-    )
+    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
     por_model = trig["score"] * (1 - params["D"])
     if history:
         max_sim = max(_similarity(question, h.question) for h in history)
@@ -369,7 +358,6 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # Data model
 # ---------------------------------------------------------------------------
 
-
 @dataclass
 class HistoryEntry:
     question: str
@@ -379,7 +367,6 @@ class HistoryEntry:
     grv: float
     timestamp: float = field(default_factory=time.time)
 
-
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -388,7 +375,6 @@ QARecord = HistoryEntry
 # ---------------------------------------------------------------------------
 # Cycle logic
 # ---------------------------------------------------------------------------
-
 
 def run_cycle(
     steps: int,
@@ -431,7 +417,6 @@ def run_cycle(
     # optional progress bar
     try:
         from tqdm import tqdm  # type: ignore
-
         iter_range = tqdm(range(steps), disable=quiet)
     except Exception:
         iter_range = range(steps)
@@ -506,7 +491,6 @@ def run_cycle(
 # CLI entry point
 # ---------------------------------------------------------------------------
 
-
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
@@ -518,9 +502,7 @@ def main(argv: List[str] | None = None) -> None:
         default=Path("por_history.csv"),
         help="CSV output path",
     )
-    parser.add_argument(
-        "--auto", action="store_true", help="run without interactive prompts"
-    )
+    parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
     parser.add_argument("--w-por", type=float, help="override W_POR")
     parser.add_argument("--w-de", type=float, help="override W_DE")
     parser.add_argument("--w-grv", type=float, help="override W_GRV")
@@ -528,9 +510,7 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument("--por-w1", type=float, help="hybrid_por_score w1")
     parser.add_argument("--por-w2", type=float, help="hybrid_por_score w2")
     parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
-    parser.add_argument(
-        "--stdin", action="store_true", help="consume questions from stdin"
-    )
+    parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
     parser.add_argument("--summary", action="store_true", help="print summary at end")
     parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
     parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
@@ -568,9 +548,7 @@ def main(argv: List[str] | None = None) -> None:
         exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / (
-        args.output.name if isinstance(args.output, Path) else "por_history.csv"
-    )
+    output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
     output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
 
     if args.w_por is not None:
@@ -599,7 +577,6 @@ def main(argv: List[str] | None = None) -> None:
         grv_mode=args.grv_mode,
         max_len=args.max_len,
     )
-
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
