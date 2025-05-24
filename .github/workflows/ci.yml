@@ -22,8 +22,6 @@ jobs:
           pip install pre-commit ruff
       - name: Run pre-commit
         run: pre-commit run --all-files --show-diff-on-failure
-      - name: Run ruff
-        run: ruff .
       - name: Run mypy
         run: mypy --strict
       - name: Run pytest
