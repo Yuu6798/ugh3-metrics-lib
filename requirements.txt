@@ -5,9 +5,10 @@ seaborn
 mypy
 torch>=2.4
 sentencepiece>=0.1.99
+pydantic[mypy]>=2.7          # extra を指定して mypy プラグインを有効化
 sentence-transformers>=2.6
 scikit-learn>=1.5
-pydantic>=2.7
+# ↑ 旧行は削除（extra 付きに置換済み）
 
 # Optional AI provider libraries (uncomment to enable)
 # openai>=1.0.0  # for OpenAI API access
