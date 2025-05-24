@@ -32,3 +32,23 @@ extend-ignore = ["ANN101"]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
+
+[[tool.poetry.packages]]
+include = "phase_map_demo"
+from = "src"
+
+[[tool.poetry.packages]]
+include = "facade"
+from = "src"
+
+[[tool.poetry.packages]]
+include = "core"
+from = "src"
+
+[[tool.poetry.packages]]
+include = "secl"
+from = "src"
+
+[[tool.poetry.packages]]
+include = "phase_map_demo"
+from = "src"
