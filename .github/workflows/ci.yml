@@ -29,4 +29,6 @@ jobs:
                   sys.exit(1)
           PY
       - run: python -c "import matplotlib"
+      - name: Static type check (mypy)
+        run: mypy .
       - run: pytest -q
