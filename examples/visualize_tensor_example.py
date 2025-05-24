@@ -81,9 +81,7 @@ def df_from_file(path: str) -> pd.DataFrame:
         if hasattr(arr, "files"):
             # npz file - take first array
             arr = arr[arr.files[0]]
-        df = pd.DataFrame(
-            arr, columns=["Q", "S", "t", "PoR", "ΔE", "grv"]
-        )
+        df = pd.DataFrame(arr, columns=["Q", "S", "t", "PoR", "ΔE", "grv"])
         return df
     df = pd.read_csv(path)
     return df

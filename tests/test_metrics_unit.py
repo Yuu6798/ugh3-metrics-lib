@@ -1,5 +1,10 @@
 import pytest
-from ugh3_metrics_lib.secl.qa_cycle import novelty_score, is_duplicate_question, simulate_delta_e, HistoryEntry
+from ugh3_metrics_lib.secl.qa_cycle import (
+    novelty_score,
+    is_duplicate_question,
+    simulate_delta_e,
+    HistoryEntry,
+)
 
 
 def test_novelty_score_basic() -> None:
