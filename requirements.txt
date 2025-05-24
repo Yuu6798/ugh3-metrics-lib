@@ -3,11 +3,12 @@ pytest
 pandas
 seaborn
 mypy
+types-PyYAML          # for mypy stub of PyYAML
 torch>=2.4
 sentencepiece>=0.1.99
-pydantic[mypy]>=2.7          # extra を指定して mypy プラグインを有効化
 sentence-transformers>=2.6
 scikit-learn>=1.5
+pydantic[mypy]>=2.7          # extra を指定して mypy プラグインを有効化
 # ↑ 旧行は削除（extra 付きに置換済み）
 
 # Optional AI provider libraries (uncomment to enable)
