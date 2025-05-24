@@ -52,3 +52,6 @@ from = "src"
 [[tool.poetry.packages]]
 include = "phase_map_demo"
 from = "src"
+
+[tool.poetry.scripts]
+phase-map-demo = "phase_map_demo.app:main"
