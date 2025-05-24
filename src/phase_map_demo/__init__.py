@@ -1,1 +1,2 @@
-from .phase_map_demo import main
+
+__all__ = ["main"]
