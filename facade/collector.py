@@ -18,15 +18,21 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Callable, Dict, List, Tuple, Optional
 import os
 import sys
+try:
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    yaml = None  # type: ignore
 
 try:
     from sentence_transformers import SentenceTransformer
     import numpy as np
     _EMBEDDER: Optional[SentenceTransformer] = None
 except Exception:  # pragma: no cover - optional dependency may not be present
+    SentenceTransformer = None  # type: ignore
+    np = None  # type: ignore
     _EMBEDDER = None
 
 from utils.config_loader import MAX_VOCAB_CAP
@@ -42,38 +48,163 @@ except Exception:  # pragma: no cover - optional dependency
 from facade.trigger import por_trigger
 
 
-def _load_embedder() -> SentenceTransformer:
+def _load_embedder() -> Optional[SentenceTransformer]:
     """Lazy-load shared SentenceTransformer instance.
 
-    Guarantees a concrete SentenceTransformer is returned.
+    Returns ``None`` when ``sentence_transformers`` is not installed.
     """
     global _EMBEDDER
-    if _EMBEDDER is None:
+    if _EMBEDDER is None and SentenceTransformer is not None:
         _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
     return _EMBEDDER
 
 # ---------------------------------------------------------------------------
-# Scoring weights and thresholds
+# Configuration loading
 # ---------------------------------------------------------------------------
-# weight for PoR component in overall score
-W_POR: float = 0.4
-# weight for (1 - ΔE) component in overall score
-W_DE: float = 0.4
-# weight for grv component in overall score
-W_GRV: float = 0.2
-# threshold for adopting a record into history
-ADOPT_TH: float = 0.45
-# weight factors inside hybrid_por_score
-POR_W1: float = 0.6
-POR_W2: float = 0.4
+
+DEFAULT_CFG: Dict[str, float] = {
+    "W_POR": 0.4,
+    "W_DE": 0.4,
+    "W_GRV": 0.2,
+    "ADOPT_TH": 0.45,
+    "POR_W1": 0.6,
+    "POR_W2": 0.4,
+}
+
+
+def _load_yaml_cfg(path: Path) -> Dict[str, Any]:
+    if yaml is None:
+        return {}
+    if path.is_file():
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+    return {}
+
+
+def merge_config(cfg: Dict[str, Any], args: argparse.Namespace | None = None) -> Dict[str, Any]:
+    """Return runtime configuration merged from multiple sources."""
+    result = cfg.copy()
+    yaml_cfg = _load_yaml_cfg(Path(os.getenv("COLLECTOR_CONFIG", "config.yaml")))
+    result.update({k: v for k, v in yaml_cfg.items() if k in result})
+    for key in result:
+        env_val = os.getenv(key)
+        if env_val is not None:
+            try:
+                result[key] = float(env_val)
+            except ValueError:
+                pass
+    if args is not None:
+        mapping = {
+            "w_por": "W_POR",
+            "w_de": "W_DE",
+            "w_grv": "W_GRV",
+            "adopt_th": "ADOPT_TH",
+            "por_w1": "POR_W1",
+            "por_w2": "POR_W2",
+        }
+        for arg_key, cfg_key in mapping.items():
+            val = getattr(args, arg_key, None)
+            if val is not None:
+                result[cfg_key] = val
+    return result
+
+
+CFG = DEFAULT_CFG.copy()
+
+
+class Metrics:
+    """Container for metric calculations."""
+
+    def __init__(self, embedder: Optional[SentenceTransformer]) -> None:
+        self.embedder = embedder
+
+    def por_score(
+        self,
+        params: Dict[str, float],
+        question: str,
+        history: List["HistoryEntry"],
+        *,
+        w1: float | None = None,
+        w2: float | None = None,
+    ) -> float:
+        if w1 is None:
+            w1 = CFG["POR_W1"]
+        if w2 is None:
+            w2 = CFG["POR_W2"]
+        trig = por_trigger(
+            params["q"],
+            params["s"],
+            params["t"],
+            params["phi_C"],
+            params["D"],
+        )
+        por_model = trig["score"] * (1 - params["D"])
+        if history:
+            max_sim = max(_similarity(question, h.question) for h in history)
+            por_sim = 1.0 - max_sim
+        else:
+            por_sim = 1.0
+        return round(w1 * por_model + w2 * por_sim, 3)
+
+    def delta_e(self, prev_answer: str | None, curr_answer: str) -> float:
+        if prev_answer is None:
+            return 0.0
+        if self.embedder is None:
+            try:
+                self.embedder = _load_embedder()
+            except Exception:
+                print("[warn] embedding model load failed; falling back to length diff")
+        if self.embedder is not None:
+            try:
+                v1 = self.embedder.encode(prev_answer)
+                v2 = self.embedder.encode(curr_answer)
+                num = float(np.dot(v1, v2))
+                denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
+                if denom == 0:
+                    raise ValueError("zero norm")
+                cos_sim = num / denom
+                diff = max(0.0, 1.0 - cos_sim)
+                return round(min(1.0, diff), 3)
+            except Exception:
+                pass
+        diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
+        return round(diff, 3)
+
+    def grv(self, answer: str, *, mode: str = "simple") -> float:
+        if isinstance(answer, str):
+            tokens = [t for t in answer.split() if t not in STOPWORDS]
+        else:
+            tokens = [t for t in answer if t not in STOPWORDS]
+        vocab = set(tokens)
+        score = 0.0
+        if vocab:
+            score = log1p(len(vocab)) / log1p(MAX_VOCAB_CAP)
+        return round(min(1.0, score), 3)
 
 
 # ---------------------------------------------------------------------------
 # Basic helpers
 # ---------------------------------------------------------------------------
 
-def _dummy_response(question: str) -> str:
-    """Return a deterministic fallback response."""
+def api_key_check(service: str, key: Optional[str]) -> Optional[str]:
+    """Return ``None`` when the API key is valid, otherwise an error message."""
+    if key is None or key == "":
+        return f"{service} APIキーが設定されていません。"
+    if not isinstance(key, str):
+        return f"{service} APIキー形式が不正です。"
+    return None
+
+def _dummy_response(question: str, **_: Any) -> str:
+    """Return a deterministic fallback response.
+
+    Extra keyword arguments are ignored so this function can be used as a
+    drop-in replacement for real provider calls.
+    """
     return f"Answer for '{question}'"
 
 
@@ -99,8 +230,9 @@ def _call_openai(
 
     # Read the API key from the OPENAI_API_KEY environment variable
     api_key = os.getenv("OPENAI_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
-        return "OpenAI APIキーが設定されていません。"
+    err = api_key_check("OpenAI", api_key)
+    if err:
+        return err
 
     # Create the client instance with the API key
     client = OpenAI(api_key=api_key)
@@ -141,8 +273,9 @@ def _call_anthropic(
         return "Anthropicプロバイダは利用できません（ライブラリ未インストール）"
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
-        return "Anthropic APIキーが設定されていません。"
+    err = api_key_check("Anthropic", api_key)
+    if err:
+        return err
 
     client = anthropic.Anthropic(api_key=api_key)
     try:
@@ -180,8 +313,9 @@ def _call_gemini(
         return "Geminiプロバイダは利用できません（ライブラリ未インストール）"
 
     api_key = os.getenv("GEMINI_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
-        return "Gemini APIキーが設定されていません。"
+    err = api_key_check("Gemini", api_key)
+    if err:
+        return err
 
     configure(api_key=api_key)
     model = GenerativeModel("gemini-pro")
@@ -195,6 +329,16 @@ def _call_gemini(
         return str(resp.text).strip()
     except Exception as err:
         return f"Gemini APIの呼び出しに失敗しました: {err}"
+
+
+AIHandler = Callable[..., str]
+
+AI_PROVIDERS: Dict[str, AIHandler] = {
+    "openai": _call_openai,
+    "anthropic": _call_anthropic,
+    "gemini": _call_gemini,
+    "dummy": _dummy_response,
+}
 
 
 def get_ai_response(question: str, provider: str | None = None) -> str:
@@ -222,14 +366,9 @@ def get_ai_response(question: str, provider: str | None = None) -> str:
     prov = raw_provider.lower()
     print(f"[AI provider] {prov}")
 
-    if prov == "openai":
-        return _call_openai(question, role="answer")
-    if prov == "anthropic":
-        return _call_anthropic(question, role="answer")
-    if prov == "gemini":
-        return _call_gemini(question, role="answer")
-    if prov == "dummy":
-        return _dummy_response(question)
+    func: AIHandler | None = AI_PROVIDERS.get(prov)
+    if func is not None:
+        return func(question, role="answer")
 
     print(f"[error] unsupported AI_PROVIDER '{prov}'")
     return f"未対応のAI_PROVIDER '{prov}' が指定されました。"
@@ -282,81 +421,13 @@ def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[st
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
 
-def hybrid_por_score(
-    params: Dict[str, float],
-    question: str,
-    history: List["HistoryEntry"],
-    *,
-    w1: float | None = None,
-    w2: float | None = None,
-) -> float:
-    """Return PoR score based on UGHer model and semantic similarity."""
-    if w1 is None:
-        w1 = POR_W1
-    if w2 is None:
-        w2 = POR_W2
-    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
-    por_model = trig["score"] * (1 - params["D"])
-    if history:
-        max_sim = max(_similarity(question, h.question) for h in history)
-        por_sim = 1.0 - max_sim
-    else:
-        por_sim = 1.0
-    return round(w1 * por_model + w2 * por_sim, 3)
 
 
-def delta_e(prev_answer: str | None, curr_answer: str) -> float:
-    """Return ΔE based on embedding cosine distance.
 
-    When the embedding model cannot be loaded, a simple length based
-    difference is used as a fallback.
-    """
-    if prev_answer is None:
-        return 0.0
-    if _EMBEDDER is None:
-        try:
-            _load_embedder()
-        except Exception:
-            pass
-    if _EMBEDDER is not None:
-        try:
-            v1 = _EMBEDDER.encode(prev_answer)
-            v2 = _EMBEDDER.encode(curr_answer)
-            num = float(np.dot(v1, v2))
-            denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-            if denom == 0:
-                raise ValueError("zero norm")
-            cos_sim = num / denom
-            diff = max(0.0, 1.0 - cos_sim)
-            return round(min(1.0, diff), 3)
-        except Exception:
-            pass
-    diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
-    return round(diff, 3)
-
-
-def grv_score(answer: str, *, mode: str = "simple") -> float:
-    """Return log-scaled grv based on vocabulary size.
-
-    Stopwords listed in ``data/jp_stop.txt`` are ignored.  The score is
-    computed as ``log(1+|V|) / log(1+cap)`` where ``cap`` is the dynamic
-    vocabulary limit ``MAX_VOCAB_CAP`` from :mod:`utils.config_loader`.
-    """
-    if isinstance(answer, str):
-        tokens = [t for t in answer.split() if t not in STOPWORDS]
-    else:
-        tokens = [t for t in answer if t not in STOPWORDS]
-    vocab = set(tokens)
-    score = 0.0
-    if vocab:
-        score = log1p(len(vocab)) / log1p(MAX_VOCAB_CAP)
-    return round(min(1.0, score), 3)
-
-
-def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
-    """Return overall score and adoption flag."""
-    score = W_POR * por + W_DE * (1 - delta_e_val) + W_GRV * grv
-    return round(score, 3), score >= ADOPT_TH
+def evaluate_metrics(por: float, delta_e_val: float, grv: float, cfg: Dict[str, Any]) -> Tuple[float, bool]:
+    """Return overall score and adoption flag using ``cfg`` weights."""
+    score = cfg["W_POR"] * por + cfg["W_DE"] * (1 - delta_e_val) + cfg["W_GRV"] * grv
+    return round(score, 3), score >= cfg["ADOPT_TH"]
 
 
 # ---------------------------------------------------------------------------
@@ -372,9 +443,6 @@ class HistoryEntry:
     grv: float
     timestamp: float = field(default_factory=time.time)
 
-# --- 互換エイリアス ------------
-QARecord = HistoryEntry
-# --------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +461,7 @@ def run_cycle(
     q_provider: str = "openai",
     ai_provider: str = "openai",
     grv_mode: str = "simple",
+    cfg: Dict[str, Any] | None = None,
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -411,6 +480,8 @@ def run_cycle(
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
     """
+    if cfg is None:
+        cfg = CFG
     history: List[HistoryEntry] = []
     prev_answer: str | None = None
     executed = 0
@@ -424,6 +495,7 @@ def run_cycle(
 
     provider = ai_provider or os.getenv("AI_PROVIDER", "dummy")
     q_prov = q_provider
+    metrics = Metrics(_load_embedder())
 
     for idx in iter_range:
         if stdin_mode:
@@ -437,14 +509,14 @@ def run_cycle(
 
         answer = get_ai_response(question, provider=provider)
         params = estimate_ugh_params(question, history)
-        por = hybrid_por_score(params, question, history)
-        de = delta_e(prev_answer, answer)
-        grv = grv_score(answer, mode=grv_mode)
+        por = metrics.por_score(params, question, history)
+        de = metrics.delta_e(prev_answer, answer)
+        grv = metrics.grv(answer, mode=grv_mode)
 
         if not quiet:
             print(f"[AI応答] {answer}")
         print(f"【PoR】{por:.2f} | 【ΔE】{de:.3f} | 【grv】{grv:.3f}")
-        score, adopted = evaluate_metrics(por, de, grv)
+        score, adopted = evaluate_metrics(por, de, grv, cfg)
         if not quiet:
             decision = "採用" if adopted else "不採用"
             print(f"【総合】{score:.3f} → {decision}")
@@ -531,28 +603,21 @@ def main(argv: List[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    global CFG
+    CFG = merge_config(DEFAULT_CFG, args)
+
     if args.exp_id:
         exp_id = args.exp_id
     else:
         ts = time.strftime("%Y%m%d-%H%M%S")
-        exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
+        exp_id = (
+            f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_"
+            f"adth{CFG['ADOPT_TH']}_wpor{CFG['W_POR']}"
+        )
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
     output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
-
-    if args.w_por is not None:
-        globals()["W_POR"] = args.w_por
-    if args.w_de is not None:
-        globals()["W_DE"] = args.w_de
-    if args.w_grv is not None:
-        globals()["W_GRV"] = args.w_grv
-    if args.adopt_th is not None:
-        globals()["ADOPT_TH"] = args.adopt_th
-    if args.por_w1 is not None:
-        globals()["POR_W1"] = args.por_w1
-    if args.por_w2 is not None:
-        globals()["POR_W2"] = args.por_w2
 
     run_cycle(
         args.steps,
@@ -565,6 +630,7 @@ def main(argv: List[str] | None = None) -> None:
         q_provider=args.q_provider,
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
+        cfg=CFG,
     )
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
