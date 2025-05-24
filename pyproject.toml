@@ -11,6 +11,7 @@ from    = "src"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "7.4.4"
+matplotlib = "^3.10.3"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -30,4 +31,4 @@ extend-select = ["PGH"]
 extend-ignore = ["ANN101"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.10,<4.0"
