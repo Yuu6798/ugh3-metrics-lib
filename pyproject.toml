@@ -10,7 +10,7 @@ from    = "src"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "<8.0"
+pytest = "7.4.4"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -28,3 +28,6 @@ no_implicit_optional = true
 line-length = 100
 extend-select = ["PGH"]
 extend-ignore = ["ANN101"]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
