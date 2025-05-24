@@ -3,6 +3,11 @@ pytest
 pandas
 seaborn
 mypy
+torch>=2.4
+sentencepiece>=0.1.99
+sentence-transformers>=2.6
+scikit-learn>=1.5
+
 # Optional AI provider libraries (uncomment to enable)
 # openai>=1.0.0  # for OpenAI API access
 # anthropic

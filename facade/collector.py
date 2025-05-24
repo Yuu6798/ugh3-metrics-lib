@@ -18,18 +18,16 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import os
 import sys
 
 try:
-    from sentence_transformers import SentenceTransformer  # type: ignore
+    from sentence_transformers import SentenceTransformer
     import numpy as np
-    _ST_MODEL = SentenceTransformer(
-        "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
-    )
+    _EMBEDDER: Optional[SentenceTransformer] = None
 except Exception:  # pragma: no cover - optional dependency may not be present
-    _ST_MODEL = None
+    _EMBEDDER = None
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -42,6 +40,17 @@ except Exception:  # pragma: no cover - optional dependency
     pass
 
 from facade.trigger import por_trigger
+
+
+def _load_embedder() -> SentenceTransformer:
+    """Lazy-load shared SentenceTransformer instance.
+
+    Guarantees a concrete SentenceTransformer is returned.
+    """
+    global _EMBEDDER
+    if _EMBEDDER is None:
+        _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
+    return _EMBEDDER
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -304,10 +313,15 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """
     if prev_answer is None:
         return 0.0
-    if _ST_MODEL is not None:
+    if _EMBEDDER is None:
         try:
-            v1 = _ST_MODEL.encode(prev_answer)
-            v2 = _ST_MODEL.encode(curr_answer)
+            _load_embedder()
+        except Exception:
+            pass
+    if _EMBEDDER is not None:
+        try:
+            v1 = _EMBEDDER.encode(prev_answer)
+            v2 = _EMBEDDER.encode(curr_answer)
             num = float(np.dot(v1, v2))
             denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
             if denom == 0:
