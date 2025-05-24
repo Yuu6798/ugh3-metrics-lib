@@ -20,6 +20,16 @@ pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
 git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 ```
 
+## Installation (v2)
+```bash
+pip install -r requirements.txt
+```
+
+## Recalculate historical ΔE
+```bash
+python recalc_deltae.py --input runs/deltae_log.csv --output runs/deltae_v2.csv
+```
+
 ## Quick Start / クイックスタート
 ```python
 from facade.trigger import por_trigger
