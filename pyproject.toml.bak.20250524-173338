@@ -6,8 +6,8 @@ authors     = ["Yuu6798 <mail@example.com>"]
 
 packages = [
   {include = "core",             from = "src"},
-  { include = "facade", from = "src/ugh3_metrics_lib" },
-  { include = "secl",   from = "src/ugh3_metrics_lib" },
+  {include = "facade",           from = "src"},
+  {include = "secl",             from = "src"},
   {include = "phase_map_demo",   from = "src"},
   {include = "ugh3_metrics_lib", from = "src"}
 ]
