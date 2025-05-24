@@ -18,7 +18,6 @@ UGHer理論に基づき、AI内在ダイナミクスを評価するための基�
 pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
 # または
 git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
-pip install -r requirements.txt
 ```
 
 ## Quick Start / クイックスタート

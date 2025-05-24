@@ -18,30 +18,18 @@ from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional, cast
+from typing import Any, Dict, List, Tuple
 import os
 import sys
 
 try:
-    from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
+    from sentence_transformers import SentenceTransformer  # type: ignore
     import numpy as np
+    _ST_MODEL = SentenceTransformer(
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12"
+    )
 except Exception:  # pragma: no cover - optional dependency may not be present
-    SentenceTransformer = cast(Any, None)
-    import numpy as np
-
-SBERT_MODEL_ID = os.getenv(
-    "SBERT_MODEL_ID", "sentence-transformers/paraphrase-MiniLM-L6-v2"
-)
-_ST_MODEL: Optional[SentenceTransformer] = None
-
-
-def get_sbert() -> SentenceTransformer:
-    """Return a singleton SBERT model (lazy-loaded)."""
-    global _ST_MODEL
-    if _ST_MODEL is None:
-        _ST_MODEL = SentenceTransformer(SBERT_MODEL_ID)
-    return cast(SentenceTransformer, _ST_MODEL)
-
+    _ST_MODEL = None
 
 from utils.config_loader import MAX_VOCAB_CAP
 
@@ -74,7 +62,6 @@ POR_W2: float = 0.4
 # ---------------------------------------------------------------------------
 # Basic helpers
 # ---------------------------------------------------------------------------
-
 
 def _dummy_response(question: str) -> str:
     """Return a deterministic fallback response."""
@@ -254,7 +241,6 @@ def generate_next_question(
             simulate_generate_next_question_from_answer,
             HistoryEntry as SeHistoryEntry,
         )
-
         q, _ = simulate_generate_next_question_from_answer(
             prev_answer, cast(List[SeHistoryEntry], history)
         )
@@ -276,10 +262,7 @@ def generate_next_question(
 # Metric calculations
 # ---------------------------------------------------------------------------
 
-
-def estimate_ugh_params(
-    question: str, history: List["HistoryEntry"]
-) -> Dict[str, float]:
+def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
     q_len = len(question)
     h_len = len(history)
@@ -289,7 +272,6 @@ def estimate_ugh_params(
     phi_C = 0.8
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
-
 
 def hybrid_por_score(
     params: Dict[str, float],
@@ -304,9 +286,7 @@ def hybrid_por_score(
         w1 = POR_W1
     if w2 is None:
         w2 = POR_W2
-    trig = por_trigger(
-        params["q"], params["s"], params["t"], params["phi_C"], params["D"]
-    )
+    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
     por_model = trig["score"] * (1 - params["D"])
     if history:
         max_sim = max(_similarity(question, h.question) for h in history)
@@ -324,19 +304,19 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """
     if prev_answer is None:
         return 0.0
-    try:
-        model = get_sbert()
-        v1 = model.encode(prev_answer)
-        v2 = model.encode(curr_answer)
-        num = float(np.dot(v1, v2))
-        denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-        if denom == 0:
-            raise ValueError("zero norm")
-        cos_sim = num / denom
-        diff = max(0.0, 1.0 - cos_sim)
-        return round(min(1.0, diff), 3)
-    except Exception:
-        pass
+    if _ST_MODEL is not None:
+        try:
+            v1 = _ST_MODEL.encode(prev_answer)
+            v2 = _ST_MODEL.encode(curr_answer)
+            num = float(np.dot(v1, v2))
+            denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
+            if denom == 0:
+                raise ValueError("zero norm")
+            cos_sim = num / denom
+            diff = max(0.0, 1.0 - cos_sim)
+            return round(min(1.0, diff), 3)
+        except Exception:
+            pass
     diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
     return round(diff, 3)
 
@@ -369,7 +349,6 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # Data model
 # ---------------------------------------------------------------------------
 
-
 @dataclass
 class HistoryEntry:
     question: str
@@ -379,7 +358,6 @@ class HistoryEntry:
     grv: float
     timestamp: float = field(default_factory=time.time)
 
-
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -388,7 +366,6 @@ QARecord = HistoryEntry
 # ---------------------------------------------------------------------------
 # Cycle logic
 # ---------------------------------------------------------------------------
-
 
 def run_cycle(
     steps: int,
@@ -402,7 +379,6 @@ def run_cycle(
     q_provider: str = "openai",
     ai_provider: str = "openai",
     grv_mode: str = "simple",
-    max_len: int | None = None,
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
 
@@ -420,9 +396,6 @@ def run_cycle(
         Provider used for answer generation.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
-    max_len : int | None, optional
-        When provided, generated questions and answers are truncated to this
-        length.
     """
     history: List[HistoryEntry] = []
     prev_answer: str | None = None
@@ -431,7 +404,6 @@ def run_cycle(
     # optional progress bar
     try:
         from tqdm import tqdm  # type: ignore
-
         iter_range = tqdm(range(steps), disable=quiet)
     except Exception:
         iter_range = range(steps)
@@ -449,12 +421,7 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov)
 
-        if max_len is not None and len(question) > max_len:
-            question = question[:max_len] + "…"
-
         answer = get_ai_response(question, provider=provider)
-        if max_len is not None and len(answer) > max_len:
-            answer = answer[:max_len] + "…"
         params = estimate_ugh_params(question, history)
         por = hybrid_por_score(params, question, history)
         de = delta_e(prev_answer, answer)
@@ -506,7 +473,6 @@ def run_cycle(
 # CLI entry point
 # ---------------------------------------------------------------------------
 
-
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
@@ -518,9 +484,7 @@ def main(argv: List[str] | None = None) -> None:
         default=Path("por_history.csv"),
         help="CSV output path",
     )
-    parser.add_argument(
-        "--auto", action="store_true", help="run without interactive prompts"
-    )
+    parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
     parser.add_argument("--w-por", type=float, help="override W_POR")
     parser.add_argument("--w-de", type=float, help="override W_DE")
     parser.add_argument("--w-grv", type=float, help="override W_GRV")
@@ -528,9 +492,7 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument("--por-w1", type=float, help="hybrid_por_score w1")
     parser.add_argument("--por-w2", type=float, help="hybrid_por_score w2")
     parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
-    parser.add_argument(
-        "--stdin", action="store_true", help="consume questions from stdin"
-    )
+    parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
     parser.add_argument("--summary", action="store_true", help="print summary at end")
     parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
     parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
@@ -552,12 +514,6 @@ def main(argv: List[str] | None = None) -> None:
         default="simple",
         help="grv score mode",
     )
-    parser.add_argument(
-        "--max-len",
-        type=int,
-        default=None,
-        help="truncate generated text to this length",
-    )
 
     args = parser.parse_args(argv)
 
@@ -568,9 +524,7 @@ def main(argv: List[str] | None = None) -> None:
         exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
     output_dir = Path("runs") / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / (
-        args.output.name if isinstance(args.output, Path) else "por_history.csv"
-    )
+    output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
     output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
 
     if args.w_por is not None:
@@ -597,9 +551,7 @@ def main(argv: List[str] | None = None) -> None:
         q_provider=args.q_provider,
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
-        max_len=args.max_len,
     )
-
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
