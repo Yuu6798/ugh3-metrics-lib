@@ -1,0 +1,18 @@
+--- a/facade/metrics.py
++++ b/facade/metrics.py
+@@ -34,8 +34,15 @@
+-if util is not None:
+-    sem_gap = 1.0 - float(util.cos_sim(get_sbert().encode(prev_q), get_sbert().encode(answer)))
+-else:
+-    sem_gap = 1.0
++if util is not None:
++    # sentence-transformers がある場合 : コサイン類似度
++    sem_gap = 1.0 - float(
++        util.cos_sim(
++            get_sbert().encode(prev_q),
++            get_sbert().encode(answer)
++        )
++    )
++else:
++    # ライブラリが無い場合 : SequenceMatcher で代替
++    sem_gap = 1.0 - SequenceMatcher(None, prev_q, answer).ratio()
