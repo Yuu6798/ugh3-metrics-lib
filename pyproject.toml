@@ -8,6 +8,10 @@ authors     = ["Yuu6798 <mail@example.com>"]
 include = "ugh3_metrics_lib"
 from    = "src"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "<8.0"
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
