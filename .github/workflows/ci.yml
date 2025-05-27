@@ -33,7 +33,7 @@ jobs:
             hf-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             hf-${{ runner.os }}-
-      - run: pip install -v -r requirements.txt
+      - run: pip install -v -r requirements.txt types-openai
       - name: Sanity-check deps
         run: |
           test -f requirements.txt || { echo "❌ requirements.txt not found"; exit 1; }
