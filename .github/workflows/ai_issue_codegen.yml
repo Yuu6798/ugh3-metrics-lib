@@ -1,0 +1,52 @@
+# ==========================================================
+#  Issue を起点に GPT-4 でコードを生成し、自動 PR を出すワークフロー
+# ==========================================================
+
+name: AI-Issue Codegen
+
+# ❶ Issue が **新規作成 or 内容編集** されたら発火
+on:
+  issues:
+    types: [opened, edited]
+
+# ----------------------------------------------------------
+# ❷ 生成ジョブ
+# ----------------------------------------------------------
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) リポジトリ取得
+      - uses: actions/checkout@v4
+
+      # 2) Python 3.11 セットアップ
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3) 依存関係をインストール
+      - name: Install deps
+        run: pip install -r requirements.txt openai
+
+      # 4) Issue 本文を渡してコード生成スクリプトを実行
+      - name: Run code generator
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python scripts/ai_issue_codegen.py \
+            "${{ github.event.issue.body }}"
+
+      # 5) 生成物をコミット & プッシュ → PR 作成
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="auto/issue-${{ github.event.issue.number }}"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "feat: generate code for issue #${{ github.event.issue.number }}"
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "feat: ${{ github.event.issue.title }}" \
+            --body  "Auto-generated from issue #${{ github.event.issue.number }}"
