@@ -4,14 +4,14 @@ pandas
 seaborn
 mypy
 types-PyYAML          # for mypy stub of PyYAML
+# ---------------- core ML / NLP 依存 ----------------
 torch>=2.4
 sentencepiece>=0.1.99
 sentence-transformers>=2.6
 scikit-learn>=1.5
-pydantic[mypy]>=2.7          # extra を指定して mypy プラグインを有効化
-# ↑ 旧行は削除（extra 付きに置換済み）
+pydantic[mypy]>=2.7       # extra を指定して  mypy プラグインを有効化
 
-# Optional AI provider libraries (uncomment to enable)
-# openai>=1.0.0  # for OpenAI API access
+# --------------- AI provider (Issue → PR 自動生成で使用) ---------------
+openai>=1.14
 # anthropic
 # google-generativeai
