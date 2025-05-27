@@ -93,7 +93,7 @@ def _call_openai(
     # and obtain an API key at https://platform.openai.com/account/api-keys
     try:
         # v1 では ``OpenAI`` クラスからクライアントを生成します
-        from openai import OpenAI  # type: ignore[import-not-found]
+        from openai import OpenAI
     except ImportError:
         return "OpenAIプロバイダは利用できません（ライブラリ未インストール）"
 
