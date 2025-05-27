@@ -1,0 +1,20 @@
+name: Issue GPT-4 Pipeline
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  generate-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install openai
+      - name: Run AI issue codegen
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python ai_issue_codegen.py "${{ github.event.issue.body }}"
