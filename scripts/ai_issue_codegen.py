@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# mypy: disable-error-code=unused-ignore
 """Generate and apply patches from GitHub Issues.
 
 Usage:
@@ -46,9 +47,14 @@ def llm(issue_body: str) -> str:
         ],
         temperature=0.0,
     )
-    choice = cast(dict[str, Any], response["choices"][0])
-    message = cast(dict[str, Any], choice["message"])
-    return str(message["content"])
+    content: str
+    if hasattr(response, "choices"):
+        content = response.choices[0].message.content  # type: ignore[attr-defined]
+    else:
+        choice = cast(dict[str, Any], response["choices"][0])  # type: ignore[index]
+        message = cast(dict[str, Any], choice["message"])
+        content = message["content"]
+    return str(content)
 
 
 def apply_patch(diff_text: str) -> None:
