@@ -46,7 +46,9 @@ def llm(issue_body: str) -> str:
         ],
         temperature=0.0,
     )
-    choice = cast(dict[str, Any], response["choices"][0])
+    if hasattr(response, "choices"):
+        return str(response.choices[0].message.content)
+    choice = cast(dict[str, Any], response["choices"][0])  # type: ignore[index]
     message = cast(dict[str, Any], choice["message"])
     return str(message["content"])
 
