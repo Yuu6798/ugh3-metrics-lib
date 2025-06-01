@@ -60,6 +60,11 @@ def llm(issue_body: str) -> str:
 def apply_patch(diff_text: str) -> None:
     # --- Strip code-fence lines (` ``` `) that break `patch`
     diff_text = "\n".join(l.lstrip("| ") for l in diff_text.splitlines() if not l.startswith("```")) + "\n"
+    # auto-insert missing "diff --git" header when LLM omits it
+    if diff_text.lstrip().startswith("--- a/"):
+        first  = diff_text.lstrip().splitlines()[0][4:]
+        second = first.replace("a/", "b/", 1)
+        diff_text = f"diff --git {first} {second}\n" + diff_text
     # ------------------------------------------------------
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
@@ -98,3 +103,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+# CI-touch: no functional change
