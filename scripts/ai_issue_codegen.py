@@ -58,6 +58,9 @@ def llm(issue_body: str) -> str:
 
 
 def apply_patch(diff_text: str) -> None:
+    # --- Strip code-fence lines (` ``` `) that break `patch`
+    diff_text = "\n".join(l for l in diff_text.splitlines() if not l.startswith("```")) + "\n"
+    # ------------------------------------------------------
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
     patch_path.write_text(diff_text)
