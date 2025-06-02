@@ -36,8 +36,27 @@ def llm(issue_body: str) -> str:
             {
                 "role": "system",
                 "content": (
-                    "You are an experienced Python engineer tasked with generating diffs."
-                    " Read the following GitHub Issue and return only unified diff text."
+                    "You are an expert at generating unified diff patches for GitHub repositories. "
+                    "When given a GitHub issue description, generate ONLY a properly formatted unified diff. "
+                    "CRITICAL REQUIREMENTS:\n"
+                    "1. Always start with 'diff --git a/filename b/filename'\n"
+                    "2. Include proper file headers: '--- a/filename' and '+++ b/filename'\n"
+                    "3. Include hunk headers with line numbers: '@@ -start,count +start,count @@'\n"
+                    "4. Use '+' for added lines, '-' for removed lines, ' ' for context\n"
+                    "5. Include 3 lines of context before and after changes\n"
+                    "6. Output ONLY the diff, no explanations or code blocks\n\n"
+                    "Example for adding content to README.md:\n"
+                    "diff --git a/README.md b/README.md\n"
+                    "index 1234567..abcdefg 100644\n"
+                    "--- a/README.md\n"
+                    "+++ b/README.md\n"
+                    "@@ -10,3 +10,6 @@\n"
+                    " existing line\n"
+                    " existing line\n"
+                    " \n"
+                    "+## New Section\n"
+                    "+New content here\n"
+                    "+\n"
                 ),
             },
             {
