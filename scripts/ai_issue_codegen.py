@@ -132,64 +132,132 @@ def apply_patch(diff_text: Union[str, bytes]) -> None:
         print(f"[debug] check exists {t}: {Path(t).exists()}")
 
 
-    # Aider-style: Write patch to file and use git apply
-    patch_path = GEN_DIR / "auto.patch"
-    patch_path.write_text(processed_text, encoding='utf-8')
-    print(f"[debug] patch written to: {patch_path}")
 
-    git_commands = [
-        ["git", "apply", "--check", str(patch_path)],
-        ["git", "apply", str(patch_path)],
-        ["git", "add", "-A"],
-        ["git", "commit", "-m", "AI: Applied patch from GitHub issue"],
-    ]
+    # Claude Code style: Direct file editing (complete subprocess avoidance)
+    print("[debug] Using Claude Code method: direct file editing")
+    try:
+        # Parse unified diff into file operations
+        file_operations = parse_unified_diff(processed_text)
+        print(f"[debug] parsed {len(file_operations)} file operations")
+    
+        # Apply changes directly to files
+        for file_path, operations in file_operations.items():
+            try:
+                apply_file_operations(file_path, operations)
+                print(f"[debug] applied changes to: {file_path}")
+            except Exception as e:
+                print(f"[error] failed to apply changes to {file_path}: {e}")
+                sys.exit("❌ patch failed")
+    
+        print("[success] All files updated successfully!")
+        print("[info] Changes applied using Claude Code method (no subprocess)")
+        return
+    
+    except Exception as e:
+        print(f"[error] Claude Code method failed: {e}")
+        sys.exit("❌ patch failed")
 
-    for i, cmd in enumerate(git_commands):
-        try:
-            print(f"[debug] running: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=os.getcwd(),
-            )
-            if result.stdout:
-                print(result.stdout)
-            if result.stderr:
-                print(result.stderr, file=sys.stderr)
-            if result.returncode != 0:
-                if i == 0:
-                    print("[warn] patch check failed, trying 3-way merge...")
-                    result = subprocess.run(
-                        ["git", "apply", "--3way", str(patch_path)],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
-                    if result.returncode == 0:
-                        print("[debug] 3-way merge successful")
-                        continue
-                    else:
-                        print(f"[error] 3-way merge also failed: {result.stderr}")
-                        sys.exit("❌ patch failed")
-                else:
-                    print(f"[error] git command failed: {' '.join(cmd)}")
-                    print(f"[error] {result.stderr}")
-                    sys.exit("❌ patch failed")
-        except FileNotFoundError:
-            print(f"[error] git command not found: {cmd[0]}")
-            sys.exit("❌ git not available")
-        except subprocess.TimeoutExpired:
-            print(f"[error] git command timed out: {' '.join(cmd)}")
-            sys.exit("❌ patch failed")
-        except Exception as e:
-            print(f"[error] unexpected error: {e}")
-            sys.exit("❌ patch failed")
+def parse_unified_diff(diff_text: str) -> dict:
+    """Parse unified diff into file operations (Claude Code style)"""
+    operations = {}
+    current_file = None
+    current_hunks = []
 
-    print("[success] Patch applied successfully using git!")
-    return
+    lines = diff_text.splitlines()
+    i = 0
 
+    while i < len(lines):
+        line = lines[i]
+
+        if line.startswith("--- a/"):
+            i += 1
+            continue
+        elif line.startswith("+++ b/"):
+            current_file = line[6:]
+            operations[current_file] = []
+            i += 1
+            continue
+        elif line.startswith("@@"):
+            hunk_info = line.split()[1:3]
+            old_info = hunk_info[0][1:].split(',')
+            new_info = hunk_info[1][1:].split(',')
+
+            old_start = int(old_info[0])
+            new_start = int(new_info[0])
+
+            i += 1
+            hunk_lines = []
+            while i < len(lines) and not lines[i].startswith("@@") and not lines[i].startswith("---"):
+                if lines[i].startswith(" ") or lines[i].startswith("+") or lines[i].startswith("-"):
+                    hunk_lines.append(lines[i])
+                i += 1
+
+            if current_file:
+                operations[current_file].append({
+                    'old_start': old_start,
+                    'new_start': new_start,
+                    'lines': hunk_lines
+                })
+            continue
+
+        i += 1
+
+    return operations
+
+def apply_file_operations(file_path: str, operations: list):
+    """Apply operations directly to file (Claude Code style)"""
+    from pathlib import Path
+
+    file_obj = Path(file_path)
+
+    if not file_obj.exists():
+        print(f"[debug] creating new file: {file_path}")
+        content_lines = []
+        for op in operations:
+            for line in op['lines']:
+                if line.startswith('+'):
+                    content_lines.append(line[1:])
+        file_obj.write_text('\n'.join(content_lines), encoding='utf-8')
+        return
+
+    try:
+        original_content = file_obj.read_text(encoding='utf-8')
+        lines = original_content.splitlines()
+    except Exception as e:
+        print(f"[error] could not read {file_path}: {e}")
+        raise
+
+    for op in reversed(operations):
+        old_start = op['old_start'] - 1
+        remove_lines = []
+        add_lines = []
+        for line in op['lines']:
+            if line.startswith('-'):
+                remove_lines.append(line[1:])
+            elif line.startswith('+'):
+                add_lines.append(line[1:])
+        for remove_line in remove_lines:
+            try:
+                line_index = None
+                for idx in range(old_start, min(old_start + 10, len(lines))):
+                    if idx < len(lines) and lines[idx].strip() == remove_line.strip():
+                        line_index = idx
+                        break
+                if line_index is not None:
+                    lines.pop(line_index)
+            except Exception:
+                pass
+        insert_point = min(old_start, len(lines))
+        for add_line in add_lines:
+            lines.insert(insert_point, add_line)
+            insert_point += 1
+
+    try:
+        file_obj.write_text('\n'.join(lines), encoding='utf-8')
+        print(f"[debug] successfully wrote {len(lines)} lines to {file_path}")
+    except Exception as e:
+        print(f"[error] could not write {file_path}: {e}")
+        raise
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
     parser.add_argument("issue_body", nargs="?")
