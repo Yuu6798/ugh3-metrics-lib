@@ -21,6 +21,9 @@ import sys
 from pathlib import Path
 from typing import Any, Union, cast, Dict, List, Optional, Tuple
 
+print(f"[DEBUG] Running script: {__file__}")
+print(f"[DEBUG] Script last modified: {os.path.getmtime(__file__)}")
+
 GEN_DIR = Path("ai_generated")
 
 
@@ -179,6 +182,17 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
         print(f"[error] could not write {file_path}: {e}")
         raise
 def main() -> None:
+    print("[DEBUG] Starting ai_issue_codegen.py")
+    print("[DEBUG] Python version:", sys.version)
+    print("[DEBUG] Current working directory:", os.getcwd())
+    print("[DEBUG] Script arguments:", sys.argv)
+
+    if 'subprocess' in sys.modules:
+        print("[WARNING] subprocess module is loaded!")
+        print("[WARNING] This should not happen in Claude Code method")
+    else:
+        print("[DEBUG] subprocess module not loaded - good!")
+
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
     parser.add_argument("issue_body", nargs="?")
     parser.add_argument("--test", action="store_true")
