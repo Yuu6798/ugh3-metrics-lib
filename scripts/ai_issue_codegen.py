@@ -258,9 +258,16 @@ index 1234567..abcdefg 100644
             print(f"[error] Claude Code method failed: {e}")
             sys.exit("❌ patch failed")
 
+    # Handle missing arguments gracefully
     if not args.issue_body and not args.test:
+        # If no arguments provided, automatically enable test mode
+        args.test = True
+        print("[INFO] No arguments provided, automatically running in test mode")
+
+    # If still no issue_body after test mode check, use default
+    if not args.issue_body and args.test:
         args.issue_body = DEFAULT_DIFF
-        print(f"[INFO] Using default issue body: {args.issue_body}")
+        print(f"[INFO] Using default test diff")
 
     try:
         file_operations = parse_unified_diff(args.issue_body)

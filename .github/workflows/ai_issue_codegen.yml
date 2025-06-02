@@ -34,7 +34,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python scripts/ai_issue_codegen.py \
+          python scripts/ai_issue_codegen.py --test \
             "${{ github.event.issue.body }}"
 
       # 5) 生成物をコミット & プッシュ → PR 作成
