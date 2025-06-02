@@ -64,7 +64,7 @@ def llm(issue_body: str) -> str:
                 "content": issue_body,
             },
         ],
-        temperature=0.0,
+        temperature=0.1,
     )
     content: str
     if hasattr(response, "choices"):
