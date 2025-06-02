@@ -59,6 +59,12 @@ def llm(issue_body: str) -> str:
 
 def apply_patch(diff_text: str) -> None:
     """Apply the unified diff text using multiple strategies with verbose output."""
+    print("=== GPT-4 GENERATED DIFF DEBUG ===")
+    print("Raw input:")
+    print(repr(diff_text))
+    print("\nFormatted input:")
+    print(diff_text)
+    print("=== END DEBUG ===")
     # --- normalize incoming diff ---------------------------------
     cleaned = []
     for raw in diff_text.splitlines():
