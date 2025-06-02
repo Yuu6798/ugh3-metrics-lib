@@ -20,7 +20,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Union, cast
 
 GEN_DIR = Path("ai_generated")
 
@@ -78,17 +78,19 @@ def llm(issue_body: str) -> str:
     return str(content)
 
 
-def apply_patch(diff_text: str) -> None:
+def apply_patch(diff_text: Union[str, bytes]) -> None:
     """Apply the unified diff text using multiple strategies with verbose output."""
     print("=== GPT-4 GENERATED DIFF DEBUG ===")
     print("Raw input:")
     print(repr(diff_text))
+    is_bytes = isinstance(diff_text, bytes)
+    text = diff_text.decode() if is_bytes else diff_text
     print("\nFormatted input:")
-    print(diff_text)
+    print(text)
     print("=== END DEBUG ===")
     # --- normalize incoming diff ---------------------------------
     cleaned = []
-    for raw in diff_text.splitlines():
+    for raw in text.splitlines():
         line = raw.lstrip("| ")  # remove leading quote mark
         if line.startswith("```"):  # drop code-fence lines
             continue
@@ -98,18 +100,18 @@ def apply_patch(diff_text: str) -> None:
         first = cleaned[0][4:]  # "a/README.md"
         second = first.replace("a/", "b/", 1)
         cleaned.insert(0, f"diff --git {first} {second}")
-    diff_text = "\n".join(cleaned) + "\n"
+    processed_text: str = "\n".join(cleaned) + "\n"
     # --------------------------------------------------------------
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
-    patch_path.write_text(diff_text)
+    patch_path.write_text(processed_text)
 
     print(f"[debug] cwd: {os.getcwd()}")
     print(f"[debug] patch written to: {patch_path}")
-    print("[debug] processed patch:\n" + diff_text)
+    print("[debug] processed patch:\n" + processed_text)
 
     targets = []
-    for line in diff_text.splitlines():
+    for line in processed_text.splitlines():
         if line.startswith("--- ") or line.startswith("+++ "):
             path = line[4:].split()[0]
             if path.startswith(("a/", "b/")):
@@ -128,16 +130,22 @@ def apply_patch(diff_text: str) -> None:
     for cmd in cmds:
         try:
             print(f"[debug] running: {' '.join(cmd)}")
-            text_input = (
-                diff_text.decode() if isinstance(diff_text, bytes) else diff_text
-            )
-            proc = subprocess.run(
-                cmd,
-                input=text_input,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+            if is_bytes:
+                proc = subprocess.run(
+                    cmd,
+                    input=processed_text.encode(),
+                    capture_output=True,
+                    text=False,
+                    timeout=30,
+                )
+            else:
+                proc = subprocess.run(
+                    cmd,
+                    input=processed_text,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
             print(proc.stdout)
             print(proc.stderr)
             if proc.returncode == 0:
