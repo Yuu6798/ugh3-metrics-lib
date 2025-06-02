@@ -58,16 +58,17 @@ def llm(issue_body: str) -> str:
 
 
 def apply_patch(diff_text: str) -> None:
+    """Apply the unified diff text using multiple strategies with verbose output."""
     # --- normalize incoming diff ---------------------------------
     cleaned = []
     for raw in diff_text.splitlines():
-        line = raw.lstrip("| ")          # remove leading quote mark
-        if line.startswith("```"):       # drop code-fence lines
+        line = raw.lstrip("| ")  # remove leading quote mark
+        if line.startswith("```"):  # drop code-fence lines
             continue
         cleaned.append(line)
     # add missing  diff --git  header
     if cleaned and cleaned[0].startswith("--- a/"):
-        first  = cleaned[0][4:]          # "a/README.md"
+        first = cleaned[0][4:]  # "a/README.md"
         second = first.replace("a/", "b/", 1)
         cleaned.insert(0, f"diff --git {first} {second}")
     diff_text = "\n".join(cleaned) + "\n"
@@ -75,15 +76,50 @@ def apply_patch(diff_text: str) -> None:
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
     patch_path.write_text(diff_text)
-    try:
-        subprocess.run(
-            ["patch", "-p1", "-d", "."],
-            input=diff_text.encode(),
-            check=True,
-        )
-    except subprocess.CalledProcessError:
-        sys.exit("\u274c patch failed")
 
+    print(f"[debug] cwd: {os.getcwd()}")
+    print(f"[debug] patch written to: {patch_path}")
+    print("[debug] processed patch:\n" + diff_text)
+
+    targets = []
+    for line in diff_text.splitlines():
+        if line.startswith("--- ") or line.startswith("+++ "):
+            path = line[4:].split()[0]
+            if path.startswith(("a/", "b/")):
+                path = path[2:]
+            if path not in targets:
+                targets.append(path)
+    for t in targets:
+        print(f"[debug] check exists {t}: {Path(t).exists()}")
+
+    cmds = [
+        ["patch", "-p1", "-d", "."],
+        ["patch", "-p1"],
+        ["patch", "-p0", "-d", "."],
+        ["git", "apply", "--verbose"],
+    ]
+    for cmd in cmds:
+        try:
+            print(f"[debug] running: {' '.join(cmd)}")
+            proc = subprocess.run(
+                cmd,
+                input=diff_text.encode(),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            print(proc.stdout)
+            print(proc.stderr)
+            if proc.returncode == 0:
+                print("[debug] patch applied successfully")
+                return
+            else:
+                print(f"[warn] command failed with code {proc.returncode}")
+        except FileNotFoundError:
+            print(f"[error] command not found: {cmd[0]}")
+        except subprocess.TimeoutExpired:
+            print(f"[error] command timed out: {' '.join(cmd)}")
+    sys.exit("❌ patch failed")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
