@@ -142,18 +142,19 @@ def apply_patch(diff_text: Union[str, bytes]) -> None:
             print(f"[debug] running: {' '.join(cmd)}")
             proc = subprocess.run(
                 cmd,
-                input=processed_text,          # 文字列で渡す
+                input=processed_text.encode('utf-8'),  # always bytes
                 capture_output=True,
-                text=True,                     # text mode → 自動で UTF-8
-                timeout=60,                    # 実行猶予
-                # cwd=repo_root,               # 必要なら作業ディレクトリを明示
+                text=False,                            # binary mode
+                timeout=60,                            # execution timeout
             )
+            stdout_text = proc.stdout.decode('utf-8', errors='replace') if proc.stdout else ''
+            stderr_text = proc.stderr.decode('utf-8', errors='replace') if proc.stderr else ''
             if proc.returncode == 0:
                 print("[debug] patch applied OK")
                 return
             else:
-                if proc.stderr.strip():
-                    print(proc.stderr, file=sys.stderr)
+                if stderr_text.strip():
+                    print(stderr_text, file=sys.stderr)
         except FileNotFoundError:
             print(f"[error] command not found: {cmd[0]}")
         except subprocess.TimeoutExpired:
