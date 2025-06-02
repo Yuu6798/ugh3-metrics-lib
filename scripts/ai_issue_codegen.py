@@ -17,7 +17,6 @@ __version__ = "0.0.1"
 
 import argparse
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Union, cast, Dict, List, Optional, Tuple
@@ -77,85 +76,6 @@ def llm(issue_body: str) -> str:
         content = message["content"]
     return str(content)
 
-
-def apply_patch(diff_text: Union[str, bytes]) -> None:
-    """Apply the unified diff text using multiple strategies with verbose output."""
-    # Type validation
-    if not isinstance(diff_text, (str, bytes)):
-        raise TypeError(f"diff_text must be str or bytes, got {type(diff_text)}")
-
-    print("=== GPT-4 GENERATED DIFF DEBUG ===")
-    print("Raw input:")
-    print(repr(diff_text))
-
-    # Convert to string for processing
-    if isinstance(diff_text, bytes):
-        text_content = diff_text.decode("utf-8")
-    else:
-        text_content = diff_text
-
-    print("\nFormatted input:")
-    print(text_content)
-    print("=== END DEBUG ===")
-
-    # --- normalize incoming diff ---------------------------------
-    cleaned = []
-    for raw in text_content.splitlines():
-        line = raw.lstrip("| ")  # remove leading quote mark
-        if line.startswith("```"):
-            continue
-        cleaned.append(line)
-    # add missing  diff --git  header
-    if cleaned and cleaned[0].startswith("--- a/"):
-        first = cleaned[0][4:]
-        second = first.replace("a/", "b/", 1)
-        cleaned.insert(0, f"diff --git {first} {second}")
-    processed_text = "\n".join(cleaned) + "\n"
-    # --------------------------------------------------------------
-    GEN_DIR.mkdir(exist_ok=True)
-    patch_path = GEN_DIR / "auto.patch"
-    patch_path.write_text(processed_text, encoding="utf-8")
-
-    print(f"[debug] cwd: {os.getcwd()}")
-    print(f"[debug] patch written to: {patch_path}")
-    print(f"[debug] processed patch:\n{processed_text}")
-
-    targets = []
-    for line in processed_text.splitlines():
-        if line.startswith("--- ") or line.startswith("+++ "):
-            path = line[4:].split()[0]
-            if path.startswith(("a/", "b/")):
-                path = path[2:]
-            if path not in targets:
-                targets.append(path)
-    for t in targets:
-        print(f"[debug] check exists {t}: {Path(t).exists()}")
-
-
-
-    # Claude Code style: Direct file editing (complete subprocess avoidance)
-    print("[debug] Using Claude Code method: direct file editing")
-    try:
-        # Parse unified diff into file operations
-        file_operations = parse_unified_diff(processed_text)
-        print(f"[debug] parsed {len(file_operations)} file operations")
-    
-        # Apply changes directly to files
-        for file_path, operations in file_operations.items():
-            try:
-                apply_file_operations(file_path, operations)
-                print(f"[debug] applied changes to: {file_path}")
-            except Exception as e:
-                print(f"[error] failed to apply changes to {file_path}: {e}")
-                sys.exit("❌ patch failed")
-    
-        print("[success] All files updated successfully!")
-        print("[info] Changes applied using Claude Code method (no subprocess)")
-        return
-    
-    except Exception as e:
-        print(f"[error] Claude Code method failed: {e}")
-        sys.exit("❌ patch failed")
 
 def parse_unified_diff(diff_text: str) -> Dict[str, List[Dict[str, Any]]]:
     """Parse unified diff into file operations (Claude Code style)"""
@@ -261,23 +181,65 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
     parser.add_argument("issue_body", nargs="?")
-    parser.add_argument(
-        "-V",
-        "--version",
-        action="store_true",
-        help="Print program version and exit",
-    )
+    parser.add_argument("--test", action="store_true")
+    parser.add_argument("-V", "--version", action="store_true", help="Print program version and exit")
     args = parser.parse_args()
+
     if args.version:
         print(__version__)
         sys.exit(0)
 
-    if args.issue_body is None:
-        parser.error("issue_body required")
+    if args.test:
+        diff_text = """diff --git a/README.md b/README.md
+index 1234567..abcdefg 100644
+--- a/README.md
++++ b/README.md
+@@ -10,3 +10,6 @@
+ existing line
+ existing line
+ 
++## New Section
++New content here
++"""
+        print(f"[debug] test diff:")
+        print(diff_text)
+        print("[debug] Using Claude Code method: direct file editing")
+        try:
+            file_operations = parse_unified_diff(diff_text)
+            print(f"[debug] parsed {len(file_operations)} file operations")
+            for file_path, operations in file_operations.items():
+                try:
+                    apply_file_operations(file_path, operations)
+                    print(f"[debug] applied changes to: {file_path}")
+                except Exception as e:
+                    print(f"[error] failed to apply changes to {file_path}: {e}")
+                    sys.exit("❌ patch failed")
+            print("[success] All files updated successfully!")
+            print("[info] Changes applied using Claude Code method (no subprocess)")
+            return
+        except Exception as e:
+            print(f"[error] Claude Code method failed: {e}")
+            sys.exit("❌ patch failed")
 
-    diff_text = llm(args.issue_body)
-    print(diff_text)
-    apply_patch(diff_text)
+    if not args.issue_body:
+        print("[error] issue_body is required")
+        sys.exit(1)
+
+    try:
+        file_operations = parse_unified_diff(args.issue_body)
+        print(f"[debug] parsed {len(file_operations)} file operations")
+        for file_path, operations in file_operations.items():
+            try:
+                apply_file_operations(file_path, operations)
+                print(f"[debug] applied changes to: {file_path}")
+            except Exception as e:
+                print(f"[error] failed to apply changes to {file_path}: {e}")
+                sys.exit("❌ patch failed")
+        print("[success] All files updated successfully!")
+        return
+    except Exception as e:
+        print(f"[error] failed to process patch: {e}")
+        sys.exit("❌ patch failed")
 
 
 if __name__ == "__main__":
