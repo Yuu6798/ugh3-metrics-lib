@@ -58,14 +58,20 @@ def llm(issue_body: str) -> str:
 
 
 def apply_patch(diff_text: str) -> None:
-    # --- Strip code-fence lines (` ``` `) that break `patch`
-    lines = [l.lstrip("| ") for l in diff_text.splitlines() if not l.startswith("```")]
-    if lines and lines[0].startswith("--- a/"):
-        first = lines[0][4:]
+    # --- normalize incoming diff ---------------------------------
+    cleaned = []
+    for raw in diff_text.splitlines():
+        line = raw.lstrip("| ")          # remove leading quote mark
+        if line.startswith("```"):       # drop code-fence lines
+            continue
+        cleaned.append(line)
+    # add missing  diff --git  header
+    if cleaned and cleaned[0].startswith("--- a/"):
+        first  = cleaned[0][4:]          # "a/README.md"
         second = first.replace("a/", "b/", 1)
-        lines.insert(0, f"diff --git {first} {second}")
-    diff_text = "\n".join(lines) + "\n"
-    # ------------------------------------------------------
+        cleaned.insert(0, f"diff --git {first} {second}")
+    diff_text = "\n".join(cleaned) + "\n"
+    # --------------------------------------------------------------
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
     patch_path.write_text(diff_text)
