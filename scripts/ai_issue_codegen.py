@@ -182,6 +182,12 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
         print(f"[error] could not write {file_path}: {e}")
         raise
 def main() -> None:
+    # Force verification that subprocess is not imported
+    import sys
+    print(f"[DEBUG] File: {__file__}")
+    print(f"[DEBUG] Modules loaded: {[m for m in sys.modules.keys() if 'subprocess' in m]}")
+    print(f"[DEBUG] Python path: {sys.path[0]}")
+
     print("[DEBUG] Starting ai_issue_codegen.py")
     print("[DEBUG] Python version:", sys.version)
     print("[DEBUG] Current working directory:", os.getcwd())
@@ -259,3 +265,4 @@ index 1234567..abcdefg 100644
 if __name__ == "__main__":
     main()
 # CI-touch: no functional change
+# Force rebuild Mon Jun  2 17:22:47 UTC 2025

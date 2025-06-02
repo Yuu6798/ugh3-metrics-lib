@@ -14,6 +14,20 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Clear all caches
+        run: |
+          find . -name "*.pyc" -delete
+          find . -name "__pycache__" -type d -exec rm -rf {} +
+          python -c "import sys; print('Python executable:', sys.executable)"
+          python -c "import sys; print('Python path:', sys.path)"
+      - name: Verify script content
+        run: |
+          echo "=== Script last 20 lines ==="
+          tail -20 scripts/ai_issue_codegen.py
+          echo "=== Checking for subprocess usage ==="
+          grep -n "subprocess" scripts/ai_issue_codegen.py || echo "No subprocess found (good!)"
+          echo "=== Checking for apply_patch calls ==="
+          grep -n "apply_patch" scripts/ai_issue_codegen.py || echo "No apply_patch calls found (good!)"
       #––– Cache pip wheels –––#
       - name: Cache pip wheels
         uses: actions/cache@v4
