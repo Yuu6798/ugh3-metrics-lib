@@ -80,37 +80,45 @@ def llm(issue_body: str) -> str:
 
 def apply_patch(diff_text: Union[str, bytes]) -> None:
     """Apply the unified diff text using multiple strategies with verbose output."""
+    # Type validation
+    if not isinstance(diff_text, (str, bytes)):
+        raise TypeError(f"diff_text must be str or bytes, got {type(diff_text)}")
+
     print("=== GPT-4 GENERATED DIFF DEBUG ===")
     print("Raw input:")
     print(repr(diff_text))
+
+    # Convert to string for processing
     if isinstance(diff_text, bytes):
         text_content = diff_text.decode("utf-8")
     else:
         text_content = diff_text
+
     print("\nFormatted input:")
     print(text_content)
     print("=== END DEBUG ===")
+
     # --- normalize incoming diff ---------------------------------
     cleaned = []
     for raw in text_content.splitlines():
         line = raw.lstrip("| ")  # remove leading quote mark
-        if line.startswith("```"):  # drop code-fence lines
+        if line.startswith("```"):
             continue
         cleaned.append(line)
     # add missing  diff --git  header
     if cleaned and cleaned[0].startswith("--- a/"):
-        first = cleaned[0][4:]  # "a/README.md"
+        first = cleaned[0][4:]
         second = first.replace("a/", "b/", 1)
         cleaned.insert(0, f"diff --git {first} {second}")
     processed_text = "\n".join(cleaned) + "\n"
     # --------------------------------------------------------------
     GEN_DIR.mkdir(exist_ok=True)
     patch_path = GEN_DIR / "auto.patch"
-    patch_path.write_text(processed_text)
+    patch_path.write_text(processed_text, encoding="utf-8")
 
     print(f"[debug] cwd: {os.getcwd()}")
     print(f"[debug] patch written to: {patch_path}")
-    print("[debug] processed patch:\n" + processed_text)
+    print(f"[debug] processed patch:\n{processed_text}")
 
     targets = []
     for line in processed_text.splitlines():
@@ -133,14 +141,14 @@ def apply_patch(diff_text: Union[str, bytes]) -> None:
         try:
             print(f"[debug] running: {' '.join(cmd)}")
             proc = subprocess.run(
-                    cmd,
-                    input=processed_text,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-            print(proc.stdout)
-            print(proc.stderr)
+                cmd,
+                input=processed_text.encode("utf-8"),
+                capture_output=True,
+                text=False,
+                timeout=30,
+            )
+            print(proc.stdout.decode("utf-8", errors="replace"))
+            print(proc.stderr.decode("utf-8", errors="replace"))
             if proc.returncode == 0:
                 print("[debug] patch applied successfully")
                 return
