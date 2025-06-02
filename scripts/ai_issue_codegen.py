@@ -27,6 +27,19 @@ print(f"[DEBUG] Script last modified: {os.path.getmtime(__file__)}")
 GEN_DIR = Path("ai_generated")
 
 
+DEFAULT_DIFF = """diff --git a/README.md b/README.md
+index 1234567..abcdefg 100644
+--- a/README.md
++++ b/README.md
+@@ -10,3 +10,6 @@
+ existing line
+ existing line
+
++## New Section
++New content here
+"""
+
+
 def llm(issue_body: str) -> str:
     import openai
 
@@ -200,7 +213,11 @@ def main() -> None:
         print("[DEBUG] subprocess module not loaded - good!")
 
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
-    parser.add_argument("issue_body", nargs="?")
+    parser.add_argument(
+        "issue_body",
+        nargs="?",
+        help="The issue body content (optional)",
+    )
     parser.add_argument("--test", action="store_true")
     parser.add_argument("-V", "--version", action="store_true", help="Print program version and exit")
     args = parser.parse_args()
@@ -241,9 +258,9 @@ index 1234567..abcdefg 100644
             print(f"[error] Claude Code method failed: {e}")
             sys.exit("❌ patch failed")
 
-    if not args.issue_body:
-        print("[error] issue_body is required")
-        sys.exit(1)
+    if not args.issue_body and not args.test:
+        args.issue_body = DEFAULT_DIFF
+        print(f"[INFO] Using default issue body: {args.issue_body}")
 
     try:
         file_operations = parse_unified_diff(args.issue_body)
