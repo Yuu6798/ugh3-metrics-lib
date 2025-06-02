@@ -128,9 +128,12 @@ def apply_patch(diff_text: str) -> None:
     for cmd in cmds:
         try:
             print(f"[debug] running: {' '.join(cmd)}")
+            text_input = (
+                diff_text.decode() if isinstance(diff_text, bytes) else diff_text
+            )
             proc = subprocess.run(
                 cmd,
-                input=diff_text.encode(),
+                input=text_input,
                 capture_output=True,
                 text=True,
                 timeout=30,
