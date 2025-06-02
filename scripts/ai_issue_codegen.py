@@ -131,35 +131,64 @@ def apply_patch(diff_text: Union[str, bytes]) -> None:
     for t in targets:
         print(f"[debug] check exists {t}: {Path(t).exists()}")
 
-    cmds = [
-        ["patch", "-p1", "-d", "."],
-        ["patch", "-p1"],
-        ["patch", "-p0", "-d", "."],
-        ["git", "apply", "--verbose"],
+
+    # Aider-style: Write patch to file and use git apply
+    patch_path = GEN_DIR / "auto.patch"
+    patch_path.write_text(processed_text, encoding='utf-8')
+    print(f"[debug] patch written to: {patch_path}")
+
+    git_commands = [
+        ["git", "apply", "--check", str(patch_path)],
+        ["git", "apply", str(patch_path)],
+        ["git", "add", "-A"],
+        ["git", "commit", "-m", "AI: Applied patch from GitHub issue"],
     ]
-    for cmd in cmds:
+
+    for i, cmd in enumerate(git_commands):
         try:
             print(f"[debug] running: {' '.join(cmd)}")
-            proc = subprocess.run(
+            result = subprocess.run(
                 cmd,
-                input=processed_text.encode('utf-8'),  # always bytes
                 capture_output=True,
-                text=False,                            # binary mode
-                timeout=60,                            # execution timeout
+                text=True,
+                timeout=30,
+                cwd=os.getcwd(),
             )
-            stdout_text = proc.stdout.decode('utf-8', errors='replace') if proc.stdout else ''
-            stderr_text = proc.stderr.decode('utf-8', errors='replace') if proc.stderr else ''
-            if proc.returncode == 0:
-                print("[debug] patch applied OK")
-                return
-            else:
-                if stderr_text.strip():
-                    print(stderr_text, file=sys.stderr)
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+            if result.returncode != 0:
+                if i == 0:
+                    print("[warn] patch check failed, trying 3-way merge...")
+                    result = subprocess.run(
+                        ["git", "apply", "--3way", str(patch_path)],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if result.returncode == 0:
+                        print("[debug] 3-way merge successful")
+                        continue
+                    else:
+                        print(f"[error] 3-way merge also failed: {result.stderr}")
+                        sys.exit("❌ patch failed")
+                else:
+                    print(f"[error] git command failed: {' '.join(cmd)}")
+                    print(f"[error] {result.stderr}")
+                    sys.exit("❌ patch failed")
         except FileNotFoundError:
-            print(f"[error] command not found: {cmd[0]}")
+            print(f"[error] git command not found: {cmd[0]}")
+            sys.exit("❌ git not available")
         except subprocess.TimeoutExpired:
-            print(f"[error] command timed out: {' '.join(cmd)}")
-    sys.exit("❌ patch failed")
+            print(f"[error] git command timed out: {' '.join(cmd)}")
+            sys.exit("❌ patch failed")
+        except Exception as e:
+            print(f"[error] unexpected error: {e}")
+            sys.exit("❌ patch failed")
+
+    print("[success] Patch applied successfully using git!")
+    return
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
