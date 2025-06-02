@@ -77,7 +77,7 @@ def apply_patch(diff_text: str) -> None:
     patch_path.write_text(diff_text)
     try:
         subprocess.run(
-            ["patch", "-p1", "-d", str(GEN_DIR)],
+            ["patch", "-p1", "-d", "."],
             input=diff_text.encode(),
             check=True,
         )
