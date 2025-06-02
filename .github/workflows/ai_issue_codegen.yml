@@ -42,6 +42,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Configure git identity
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
           branch="auto/issue-${{ github.event.issue.number }}"
           git checkout -b "$branch"
           git add -A
@@ -49,4 +53,4 @@ jobs:
           git push -u origin "$branch"
           gh pr create --base main --head "$branch" \
             --title "feat: ${{ github.event.issue.title }}" \
-            --body  "Auto-generated from issue #${{ github.event.issue.number }}"
+            --body "Auto-generated from issue #${{ github.event.issue.number }}"
