@@ -13,5 +13,6 @@ pydantic[mypy]>=2.7       # extra を指定して  mypy プラグインを有効
 
 # --------------- AI provider (Issue → PR 自動生成で使用) ---------------
 openai>=1.14
+tenacity>=8.0
 # anthropic
 # google-generativeai

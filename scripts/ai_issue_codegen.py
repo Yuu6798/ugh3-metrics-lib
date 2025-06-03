@@ -39,14 +39,19 @@ index 1234567..abcdefg 100644
 +New content here
 """
 
+DEFAULT_MODEL = "gpt-4o"
 
-def llm(issue_body: str) -> str:
+REQUIRED_FILES = ["scripts/ai_issue_codegen.py"]
+
+
+def llm(issue_body: str, model: str = DEFAULT_MODEL) -> str:
     import openai
 
     api_key = os.getenv("OPENAI_API_KEY", "")
+    actual_model: str = os.getenv("AI_MODEL", model)
     client = openai.OpenAI(api_key=api_key)
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=actual_model,
         messages=[
             {
                 "role": "system",
@@ -61,19 +66,8 @@ def llm(issue_body: str) -> str:
                     "5. Include hunk headers with line numbers: '@@ -start,count +start,count @@'\n"
                     "6. Use '+' for added lines, '-' for removed lines, ' ' for context\n"
                     "7. Include 3 lines of context before and after changes\n"
-                    "8. Output ONLY the diff, no explanations or code blocks\n\n"
-                    "Example for adding content to README.md:\n"
-                    "diff --git a/README.md b/README.md\n"
-                    "index 1234567..abcdefg 100644\n"
-                    "--- a/README.md\n"
-                    "+++ b/README.md\n"
-                    "@@ -10,3 +10,6 @@\n"
-                    " existing line\n"
-                    " existing line\n"
-                    " \n"
-                    "+## New Section\n"
-                    "+New content here\n"
-                    "+\n"
+                    "8. Output ONLY the diff, no explanations or code blocks\n"
+                    "9. ONLY modify file(s) explicitly mentioned in the Issue body\n"
                 ),
             },
             {
@@ -218,6 +212,11 @@ def main() -> None:
         nargs="?",
         help="The issue body content (optional)",
     )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Model name (overrides AI_MODEL env var)",
+    )
     parser.add_argument("--test", action="store_true")
     parser.add_argument("-V", "--version", action="store_true", help="Print program version and exit")
     args = parser.parse_args()
@@ -268,6 +267,12 @@ index 1234567..abcdefg 100644
     if not args.issue_body and args.test:
         args.issue_body = DEFAULT_DIFF
         print(f"[INFO] Using default test diff")
+
+    if not args.test:
+        for required_file in REQUIRED_FILES:
+            if required_file not in args.issue_body:
+                print(f"[ERROR] Required file {required_file} not found in diff")
+                sys.exit(1)
 
     try:
         file_operations = parse_unified_diff(args.issue_body)

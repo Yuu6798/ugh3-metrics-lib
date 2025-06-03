@@ -2,6 +2,7 @@
 
 UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE open source library and reference implementation).
 本リポジトリはPoR (Proof of Resonance) やΔE (存在エネルギー差)、grv (語彙重力) といった指標をPythonから簡単に計算するためのツール集です。
+デフォルトモデル: gpt-4o になりました
 
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
@@ -154,3 +155,4 @@ MIT License
 
 ## Contact / 連絡先
 ご質問や要望はGitHub Issueよりご連絡ください。
+デフォルトモデル: gpt-4o になりました
