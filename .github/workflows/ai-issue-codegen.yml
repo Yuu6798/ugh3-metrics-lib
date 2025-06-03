@@ -32,13 +32,14 @@ jobs:
 
       - name: Validate issue body
         id: validate
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          body="${{ github.event.issue.body }}"
-          if [ -z "$body" ]; then
+          if [ -z "$ISSUE_BODY" ]; then
             echo "Issue body is empty" >&2
             exit 1
           fi
-          echo "$body" | grep -Ei "scripts/|\.py|\.md|requirements\.txt|diff|patch" >/dev/null || {
+          echo "$ISSUE_BODY" | grep -Ei "scripts/|\.py|\.md|requirements\.txt|diff|patch" >/dev/null || {
             echo "No code keywords" >&2
             exit 1
           }
@@ -64,8 +65,9 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_MODEL: gpt-4o
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          issue_body="${{ github.event.issue.body }}"
+          issue_body="$ISSUE_BODY"
           if [[ "$issue_body" != *"scripts/ai_issue_codegen.py"* ]]; then
             issue_body="$issue_body"$'\n'"scripts/ai_issue_codegen.py"
           fi
