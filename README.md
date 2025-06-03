@@ -7,6 +7,8 @@ UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE ope
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
 
+## New Section
+New content here
 ## Features / 特徴
 - PoR（共鳴点）トリガー計算
 - ΔE（存在エネルギー差）スコア計算
