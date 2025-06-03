@@ -32,4 +32,4 @@ def test_codegen_version() -> None:
                 # argparse exits after printing version
                 pass
             output = mock_stdout.getvalue()
-            assert "0.0.1" in output
+            assert "0.0.2" in output
