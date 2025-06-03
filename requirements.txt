@@ -10,7 +10,6 @@ sentencepiece>=0.1.99
 sentence-transformers>=2.6
 scikit-learn>=1.5
 pydantic[mypy]>=2.7       # extra を指定して  mypy プラグインを有効化
-requests>=2.25.0
 
 # --------------- AI provider (Issue → PR 自動生成で使用) ---------------
 openai>=1.14

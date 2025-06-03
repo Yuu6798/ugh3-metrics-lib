@@ -24,7 +24,7 @@ jobs:
       - name: Install deps
         run: |
           pip install -r requirements.txt
-          pip install openai
+          # requestsは不要（標準ライブラリのurllibを使用）
 
       - name: Initialize progress tracker
         run: |
