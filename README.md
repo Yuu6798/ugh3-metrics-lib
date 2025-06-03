@@ -1,3 +1,8 @@
+
+このリポジトリは、進化型認知学習アルゴリズムを実装したSECLシステムの技術仕様書を提供します。本システムは、質問応答サイクルを通じて知識獲得と創発的思考を模擬する高度なAIシステムです。
+
+## 技術仕様書の目的
+技術仕様書は、システム全体の動作原理を明確化し、保守性を向上させ、将来的な機能追加や改修の方向性を提示することを目的としています。
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
@@ -184,4 +189,5 @@ PoR scores over time. Running the script will save an image to
 MIT License
 
 ## Contact / 連絡先
+# SECL（Self-Evolving Cognitive Learning）Q&Aサイクルシミュレーションプログラム
 ご質問や要望はGitHub Issueよりご連絡ください。
