@@ -25,8 +25,15 @@ class ProgressTracker:
         self.repo: Optional[str] = os.getenv("GITHUB_REPOSITORY")
         self.token: Optional[str] = os.getenv("GITHUB_TOKEN")
 
+        # 環境変数チェックを緩和 - 警告のみでエラーにしない
         if not self.repo or not self.token:
-            raise ValueError("GITHUB_REPOSITORY and GITHUB_TOKEN must be set")
+            print("Warning: GITHUB_REPOSITORY and/or GITHUB_TOKEN not set")
+            print(
+                "Progress tracker will run in offline mode (no GitHub API calls)"
+            )
+            self.offline_mode: bool = True
+        else:
+            self.offline_mode = False
 
     def add_task(self, description: str, emoji: str = "⏳") -> None:
         """タスクをプログレスリストに追加"""
@@ -70,6 +77,9 @@ class ProgressTracker:
                 lines.extend(["", "**ステータス**: ❌ エラーが発生しました"])
 
         lines.extend(["", f"**開始時刻**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"])
+        # オフラインモードの場合は注釈を追加
+        if self.offline_mode:
+            lines.extend(["", "*注意: オフラインモード - GitHub APIは呼び出されません*"])
 
         return "\n".join(lines)
 
@@ -77,6 +87,10 @@ class ProgressTracker:
         self, url: str, method: str = "POST", data: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """GitHub APIリクエストを実行"""
+        if self.offline_mode:
+            print(f"Offline mode: Skipping GitHub API call to {url}")
+            return None
+
         if not self.token:
             print("GitHub token not available")
             return None
@@ -113,6 +127,11 @@ class ProgressTracker:
 
     def post_progress_comment(self) -> None:
         """初回プログレスコメントを投稿"""
+        if self.offline_mode:
+            print("Offline mode: Would post progress comment")
+            print(self.generate_progress_markdown())
+            return
+
         if not self.repo:
             print("Repository information not available")
             return
@@ -132,6 +151,11 @@ class ProgressTracker:
 
     def update_progress_comment(self) -> None:
         """既存のプログレスコメントを更新"""
+        if self.offline_mode:
+            print("Offline mode: Would update progress comment")
+            print(self.generate_progress_markdown())
+            return
+
         if not self.comment_id:
             self.post_progress_comment()
             return
@@ -165,6 +189,7 @@ def main() -> None:
     """CLI用のメイン関数"""
     if len(sys.argv) < 3:
         print("Usage: python progress_tracker.py <issue_number> <action> [params...]")
+        print("Environment variables: GITHUB_REPOSITORY, GITHUB_TOKEN (optional)")
         sys.exit(1)
 
     try:
@@ -175,7 +200,12 @@ def main() -> None:
 
     action: str = sys.argv[2]
 
-    tracker = ProgressTracker(issue_number)
+    # エラーハンドリングを追加
+    try:
+        tracker = ProgressTracker(issue_number)
+    except Exception as e:
+        print(f"Failed to initialize ProgressTracker: {e}")
+        sys.exit(1)
 
     if action == "init":
         tracker.add_task("📋 Issue分析開始", "📋")
