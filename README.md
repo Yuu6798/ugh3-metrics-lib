@@ -1,3 +1,7 @@
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+![MIT License](https://img.shields.io/badge/license-MIT-green)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+
 # ugh3-metrics-lib
 
 UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE open source library and reference implementation).
@@ -7,6 +11,16 @@ UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE ope
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
 
+方法1: GitHubから直接インストール
+pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
+
+方法2: 開発用インストール
+git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
+cd ugh3-metrics-lib
+pip install -e .
+
+方法3: 依存関係のみインストール
+pip install -r requirements.txt
 ## Features / 特徴
 - PoR（共鳴点）トリガー計算
 - ΔE（存在エネルギー差）スコア計算
@@ -17,6 +31,22 @@ UGHer理論に基づき、AI内在ダイナミクスを評価するための基�
 ## Installation / インストール
 ```bash
 pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
+# PoR（共鳴点）の計算 - 問い品質、類似度、時間同期性を評価
+# ΔE（存在エネルギー差）の計算 - エネルギー状態の変化量
+# grv（語彙重力）の計算 - テキストの語彙的重みを測定
+## トラブルシューティング / Troubleshooting
+
+### よくある問題
+
+#### ImportError が発生する場合
+```bash
+pip install --upgrade -r requirements.txt
+計算結果が期待と異なる場合
+パラメータの範囲を確認（多くは 0.0-1.0）
+入力データの型と形式を確認
+examples/ ディレクトリの参考実装を確認
+可視化スクリプトが動作しない場合
+pip install matplotlib seaborn jupyter
 # または
 git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 ```
