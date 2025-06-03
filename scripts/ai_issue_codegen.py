@@ -189,22 +189,12 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
         print(f"[error] could not write {file_path}: {e}")
         raise
 def main() -> None:
-    # Force verification that subprocess is not imported
-    import sys
-    print(f"[DEBUG] File: {__file__}")
-    print(f"[DEBUG] Modules loaded: {[m for m in sys.modules.keys() if 'subprocess' in m]}")
-    print(f"[DEBUG] Python path: {sys.path[0]}")
+    """Fixed main function that properly uses LLM to generate diff from issue body"""
 
     print("[DEBUG] Starting ai_issue_codegen.py")
     print("[DEBUG] Python version:", sys.version)
     print("[DEBUG] Current working directory:", os.getcwd())
     print("[DEBUG] Script arguments:", sys.argv)
-
-    if 'subprocess' in sys.modules:
-        print("[WARNING] subprocess module is loaded!")
-        print("[WARNING] This should not happen in Claude Code method")
-    else:
-        print("[DEBUG] subprocess module not loaded - good!")
 
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
     parser.add_argument(
@@ -214,7 +204,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        default=None,
+        default=DEFAULT_MODEL,
         help="Model name (overrides AI_MODEL env var)",
     )
     parser.add_argument("--test", action="store_true")
@@ -225,19 +215,10 @@ def main() -> None:
         print(__version__)
         sys.exit(0)
 
+    # Test mode with predefined diff
     if args.test:
-        diff_text = """diff --git a/README.md b/README.md
-index 1234567..abcdefg 100644
---- a/README.md
-+++ b/README.md
-@@ -10,3 +10,6 @@
- existing line
- existing line
- 
-+## New Section
-+New content here
-+"""
-        print(f"[debug] test diff:")
+        diff_text = DEFAULT_DIFF
+        print(f"[debug] test mode: using predefined diff")
         print(diff_text)
         print("[debug] Using Claude Code method: direct file editing")
         try:
@@ -251,43 +232,75 @@ index 1234567..abcdefg 100644
                     print(f"[error] failed to apply changes to {file_path}: {e}")
                     sys.exit("❌ patch failed")
             print("[success] All files updated successfully!")
-            print("[info] Changes applied using Claude Code method (no subprocess)")
+            print("Code generation completed")
             return
         except Exception as e:
             print(f"[error] Claude Code method failed: {e}")
             sys.exit("❌ patch failed")
 
-    # Handle missing arguments gracefully
-    if not args.issue_body and not args.test:
-        # If no arguments provided, automatically enable test mode
-        args.test = True
-        print("[INFO] No arguments provided, automatically running in test mode")
+    # Get issue body from arguments or environment
+    issue_body = args.issue_body
+    if not issue_body:
+        issue_body = os.environ.get('ISSUE_BODY', '')
 
-    # If still no issue_body after test mode check, use default
-    if not args.issue_body and args.test:
-        args.issue_body = DEFAULT_DIFF
-        print(f"[INFO] Using default test diff")
+    if not issue_body:
+        print("[ERROR] No issue body provided")
+        sys.exit(1)
 
-    if not args.test:
-        for required_file in REQUIRED_FILES:
-            if required_file not in args.issue_body:
-                print(f"[ERROR] Required file {required_file} not found in diff")
-                sys.exit(1)
+    print(f"[DEBUG] Issue body length: {len(issue_body)}")
+    print(f"[DEBUG] Issue body preview: {issue_body[:200]}...")
 
+    # **THIS IS THE CRITICAL FIX: Actually use LLM to generate diff**
     try:
-        file_operations = parse_unified_diff(args.issue_body)
+        print("[DEBUG] Calling LLM to generate diff from issue body...")
+
+        # Use the model from args or environment
+        model = args.model or os.getenv("AI_MODEL", DEFAULT_MODEL)
+        print(f"[DEBUG] Using model: {model}")
+
+        # **CALL THE LLM FUNCTION TO GENERATE DIFF**
+        generated_diff = llm(issue_body, model)
+
+        print(f"[DEBUG] LLM response length: {len(generated_diff)}")
+        print(f"[DEBUG] Generated diff preview:")
+        print(generated_diff[:500] + "..." if len(generated_diff) > 500 else generated_diff)
+
+        if not generated_diff or not generated_diff.strip():
+            print("[ERROR] LLM returned empty response")
+            sys.exit(1)
+
+    except Exception as e:
+        print(f"[ERROR] LLM call failed: {e}")
+        sys.exit(1)
+
+    # Parse and apply the LLM-generated diff
+    try:
+        print("[DEBUG] Parsing generated diff...")
+        file_operations = parse_unified_diff(generated_diff)
         print(f"[debug] parsed {len(file_operations)} file operations")
+
+        if not file_operations:
+            print("[ERROR] No file operations found in generated diff")
+            print("[DEBUG] Generated diff was:")
+            print(generated_diff)
+            sys.exit(1)
+
+        # Apply changes to each file
         for file_path, operations in file_operations.items():
+            print(f"[DEBUG] Applying operations to: {file_path}")
             try:
                 apply_file_operations(file_path, operations)
                 print(f"[debug] applied changes to: {file_path}")
             except Exception as e:
                 print(f"[error] failed to apply changes to {file_path}: {e}")
                 sys.exit("❌ patch failed")
+
         print("[success] All files updated successfully!")
-        return
+        print("Code generation completed")
+
     except Exception as e:
-        print(f"[error] failed to process patch: {e}")
+        print(f"[error] failed to process generated diff: {e}")
+        print(f"[debug] Generated diff was: {generated_diff}")
         sys.exit("❌ patch failed")
 
 
