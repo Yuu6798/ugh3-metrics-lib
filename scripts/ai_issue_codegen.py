@@ -121,6 +121,10 @@ def llm(issue_body: str, model: str = DEFAULT_MODEL) -> str:
                     "7. Include 3 lines of context before and after changes\n"
                     "8. Output ONLY the diff, no explanations or code blocks\n"
                     "9. ONLY modify file(s) explicitly mentioned in the Issue body\n"
+                    "10. If creating or updating a GitHub Actions workflow, add a step"
+                    " to install dependencies with 'pip install -r requirements.txt'"
+                    " immediately after the Python setup step and include any"
+                    " required environment variable secrets such as OPENAI_API_KEY\n"
                 ),
             },
             {
