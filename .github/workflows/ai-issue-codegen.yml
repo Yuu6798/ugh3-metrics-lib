@@ -26,6 +26,10 @@ jobs:
           pip install -r requirements.txt
           pip install openai
 
+      - name: Initialize progress tracker
+        run: |
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} init
+
       - name: Validate issue body
         id: validate
         run: |
@@ -39,6 +43,20 @@ jobs:
             exit 1
           }
           echo "valid=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update progress - Analysis complete
+        run: |
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 0 true
+
+      - name: Update progress - Validation complete
+        if: steps.validate.outputs.valid == 'true'
+        run: |
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 1 true
+
+      - name: Update progress - AI processing start
+        if: steps.validate.outputs.valid == 'true'
+        run: |
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 2 true
 
       - name: Generate and apply patch
         id: codegen
