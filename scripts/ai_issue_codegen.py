@@ -13,13 +13,14 @@ Exit codes:
 
 from __future__ import annotations
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Any, Union, cast, Dict, List, Optional, Tuple
+from typing import Any, cast, Dict, List, Optional
+import re
 
 print(f"[DEBUG] Running script: {__file__}")
 print(f"[DEBUG] Script last modified: {os.path.getmtime(__file__)}")
@@ -42,6 +43,58 @@ index 1234567..abcdefg 100644
 DEFAULT_MODEL = "gpt-4o"
 
 REQUIRED_FILES = ["scripts/ai_issue_codegen.py"]
+
+
+def ensure_directory_exists(file_path: str) -> None:
+    """Create parent directory for *file_path* if it does not exist."""
+    directory = os.path.dirname(file_path)
+    if directory and not os.path.exists(directory):
+        try:
+            os.makedirs(directory, exist_ok=True)
+            print(f"[INFO] Created directory: {directory}")
+        except Exception as e:
+            print(f"[ERROR] Failed to create directory {directory}: {e}")
+            raise
+
+
+def detect_file_type(issue_body: str, file_path: str | None = None) -> str:
+    """Guess file type from issue body or file path."""
+    if file_path:
+        if file_path.endswith(('.yml', '.yaml')):
+            return 'yaml'
+        if file_path.endswith('.json'):
+            return 'json'
+        if file_path.endswith('.py'):
+            return 'python'
+        if file_path.endswith('.md'):
+            return 'markdown'
+
+    body = issue_body.lower()
+    if 'workflow' in body:
+        return 'yaml'
+    if 'json' in body or 'config' in body:
+        return 'json'
+    if 'python' in body:
+        return 'python'
+    return 'text'
+
+
+def extract_code_from_response(response: str, file_type: str) -> str:
+    """Extract code block matching *file_type* from LLM response."""
+    patterns = {
+        'yaml': r'```ya?ml\n(.*?)\n```',
+        'json': r'```json\n(.*?)\n```',
+        'python': r'```python\n(.*?)\n```',
+    }
+    regex = patterns.get(file_type)
+    if regex:
+        m = re.search(regex, response, re.DOTALL)
+        if m:
+            return m.group(1).strip()
+    generic = re.search(r'```[^\n]*\n(.*?)\n```', response, re.DOTALL)
+    if generic:
+        return generic.group(1).strip()
+    return response.strip()
 
 
 def llm(issue_body: str, model: str = DEFAULT_MODEL) -> str:
@@ -138,6 +191,7 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
     """Apply operations directly to file (Claude Code style)"""
     from pathlib import Path
 
+    ensure_directory_exists(file_path)
     file_obj = Path(file_path)
 
     if not file_obj.exists():
@@ -198,9 +252,22 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Generate patch from issue body")
     parser.add_argument(
-        "issue_body",
+        "issue_body_pos",
         nargs="?",
-        help="The issue body content (optional)",
+        help="The issue body content (optional positional)",
+    )
+    parser.add_argument(
+        "--issue-body",
+        dest="issue_body_opt",
+        help="Issue body content",
+    )
+    parser.add_argument(
+        "--file-path",
+        help="Target file path for creation",
+    )
+    parser.add_argument(
+        "--file-type",
+        help="File type (yaml, json, py, md)",
     )
     parser.add_argument(
         "--model",
@@ -239,7 +306,7 @@ def main() -> None:
             sys.exit("❌ patch failed")
 
     # Get issue body from arguments or environment
-    issue_body = args.issue_body
+    issue_body = args.issue_body_opt or args.issue_body_pos
     if not issue_body:
         issue_body = os.environ.get('ISSUE_BODY', '')
 
@@ -259,15 +326,29 @@ def main() -> None:
         print(f"[DEBUG] Using model: {model}")
 
         # **CALL THE LLM FUNCTION TO GENERATE DIFF**
-        generated_diff = llm(issue_body, model)
+        generated_output = llm(issue_body, model)
 
-        print(f"[DEBUG] LLM response length: {len(generated_diff)}")
-        print(f"[DEBUG] Generated diff preview:")
-        print(generated_diff[:500] + "..." if len(generated_diff) > 500 else generated_diff)
+        print(f"[DEBUG] LLM response length: {len(generated_output)}")
+        print(f"[DEBUG] LLM response preview:")
+        print(generated_output[:500] + "..." if len(generated_output) > 500 else generated_output)
 
-        if not generated_diff or not generated_diff.strip():
+        if not generated_output or not generated_output.strip():
             print("[ERROR] LLM returned empty response")
             sys.exit(1)
+
+        # If a direct file path is provided, write the response as code
+        if args.file_path:
+            file_type = args.file_type or detect_file_type(issue_body, args.file_path)
+            print(f"[DEBUG] Detected file type: {file_type}")
+            try:
+                code_text = extract_code_from_response(generated_output, file_type)
+                ensure_directory_exists(args.file_path)
+                Path(args.file_path).write_text(code_text, encoding="utf-8")
+                print(f"[success] Wrote file: {args.file_path}")
+                return
+            except Exception as e:
+                print(f"[ERROR] Failed to write file {args.file_path}: {e}")
+                sys.exit(1)
 
     except Exception as e:
         print(f"[ERROR] LLM call failed: {e}")
@@ -276,13 +357,13 @@ def main() -> None:
     # Parse and apply the LLM-generated diff
     try:
         print("[DEBUG] Parsing generated diff...")
-        file_operations = parse_unified_diff(generated_diff)
+        file_operations = parse_unified_diff(generated_output)
         print(f"[debug] parsed {len(file_operations)} file operations")
 
         if not file_operations:
             print("[ERROR] No file operations found in generated diff")
             print("[DEBUG] Generated diff was:")
-            print(generated_diff)
+            print(generated_output)
             sys.exit(1)
 
         # Apply changes to each file
@@ -300,7 +381,7 @@ def main() -> None:
 
     except Exception as e:
         print(f"[error] failed to process generated diff: {e}")
-        print(f"[debug] Generated diff was: {generated_diff}")
+        print(f"[debug] Generated diff was: {generated_output}")
         sys.exit("❌ patch failed")
 
 
