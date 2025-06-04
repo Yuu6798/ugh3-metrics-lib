@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 PATTERNS = {
     "fix_request": r"(?i)(fix|correct|bug|error|issue)",
@@ -34,7 +34,7 @@ def github_api_request(url: str, token: str) -> Optional[Dict[str, Any]]:
             capture_output=True,
             text=True,
         )
-        return json.loads(req.stdout)
+        return cast(Dict[str, Any], json.loads(req.stdout))
     except Exception as exc:  # pragma: no cover - debug safety
         print(f"API request failed: {exc}")
     return None
