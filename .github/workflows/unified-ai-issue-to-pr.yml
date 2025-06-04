@@ -1,0 +1,164 @@
+name: Unified AI Issue to PR
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Initialize progress tracker
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} init
+
+      - name: Update progress - Analysis started
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 0 true
+
+      - name: Validate issue body
+        id: validate
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          if [ -z "$ISSUE_BODY" ]; then
+            echo 'valid=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$ISSUE_BODY" | grep -Ei 'scripts/|\.py|\.md|requirements\.txt|diff|patch' >/dev/null && echo 'valid=true' >> "$GITHUB_OUTPUT" || echo 'valid=false' >> "$GITHUB_OUTPUT"
+
+      - name: Update progress - Validation complete
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 1 true
+
+      - name: Update progress - AI processing start
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 2 true
+
+      - name: Run AI Code Generation
+        id: codegen
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_MODEL: gpt-4o
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          issue_body="$ISSUE_BODY"
+          if [[ "$issue_body" != *"scripts/ai_issue_codegen.py"* ]]; then
+            issue_body="$issue_body"$'\n'"scripts/ai_issue_codegen.py"
+          fi
+          echo "$issue_body" | python scripts/ai_issue_codegen.py --model gpt-4o
+        continue-on-error: true
+
+      - name: Update progress - AI processing complete
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 3 ${{ steps.codegen.outcome == 'success' }}
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update progress - File detection complete
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 4 true
+
+      - name: Get timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +'%Y-%m-%d %H:%M:%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        id: pr
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          commit-message: "auto: update for issue #${{ github.event.issue.number }}"
+          title: "🤖 AI-generated solution for issue #${{ github.event.issue.number }}"
+          body: |
+            ## 🤖 自動生成されたプルリクエスト
+            
+            **Issue:** #${{ github.event.issue.number }}
+            **AI Model:** gpt-4o
+            **Generated:** ${{ steps.timestamp.outputs.timestamp }}
+            
+            ### 📝 変更内容
+            - Issue内容を解析してAIが自動生成
+            
+            ### ✅ レビューポイント
+            - [ ] 生成されたコードの妥当性確認
+            - [ ] セキュリティ観点での確認
+            - [ ] テスト実行
+            
+            ### 🔗 関連情報
+            - 元Issue: #${{ github.event.issue.number }}
+            - ワークフロー実行: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          branch: "ai-unified-${{ github.event.issue.number }}-${{ github.run_number }}"
+
+      - name: Update progress - Complete
+        if: steps.pr.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 5 true
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 6 true
+          python scripts/progress_tracker.py ${{ github.event.issue.number }} complete 7 true
+
+      - name: Comment on issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          if [ "${{ steps.validate.outputs.valid }}" != "true" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "❌ Issue validation failed. Please provide sufficient details."
+          elif [ "${{ steps.pr.outcome }}" == "success" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "🤖 **Code generation completed successfully.**\n\nPR: ${{ steps.pr.outputs.pull-request-url }}\nModel: gpt-4o"
+          elif [ "${{ steps.codegen.outcome }}" == "failure" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "🤖 **Code generation failed.**"
+          else
+            gh issue comment ${{ github.event.issue.number }} --body "⚠️ Workflow completed but no pull request was created."
+          fi
