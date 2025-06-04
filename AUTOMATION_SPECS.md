@@ -1,64 +1,142 @@
+# AI開発プラットフォーム仕様書
 
 ## 1. プログラム概要
+
 自然言語のイシュー本文から自動でコード生成・プルリクエスト作成を行うプログラムです。リアルタイムプログレス表示機能を備え、CI/CD統合による品質保証を実現します。
 
 ## 2. システム構成
+
 ```
-📁 システム構成
+📁 AI開発プラットフォーム
 ├── .github/workflows/
-│   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR完全自動化）
-│   ├── ci.yml                      # CI/テスト実行ワークフロー
-│   ├── typecheck.yml               # 型チェック専用ワークフロー
-│   └── secret-smoke.yml            # シークレット検証ワークフロー
+│   ├── unified-ai-issue-to-pr.yml     # 統合AIワークフロー（Issue→AI→PR完全自動化）
+│   ├── ai-review-response.yml         # AIレビュー応答システム
+│   ├── ci.yml                         # CI/テスト実行ワークフロー
+│   ├── typecheck.yml                  # 型チェック専用ワークフロー
+│   └── secret-smoke.yml               # シークレット検証ワークフロー
 └── scripts/
-    ├── ai_issue_codegen.py         # AIコード生成エンジン（メイン処理）
-    ├── progress_tracker.py         # リアルタイムプログレス表示システム
-    └── recalc_deltae.py            # ΔE再計算ユーティリティ
+    ├── ai_issue_codegen.py            # AIコード生成エンジン（メイン処理）
+    ├── review_processor.py            # AIレビュー応答プロセッサー
+    ├── progress_tracker.py            # リアルタイムプログレス表示システム
+    └── recalc_deltae.py              # ΔE再計算ユーティリティ
 ```
 
 ## 3. 動作フロー
-Issue作成 → GitHub Actionsトリガー
-プログレス初期化 → Issue内にリアルタイム進捗表示
-AI解析 → OpenAI APIでイシュー本文解析
-コード生成 → LLMによる具体的な修正内容生成
-ファイル適用 → 生成されたdiffを実際のファイルに適用
-PR作成 → PAT_TOKENでプルリクエスト自動作成
-CI実行 → 自動テスト・品質チェック実行
+
+### Issue-to-PR自動化フロー
+1. **Issue作成** → GitHub Actionsトリガー
+2. **プログレス初期化** → Issue内にリアルタイム進捗表示
+3. **AI解析** → OpenAI APIでイシュー本文解析
+4. **コード生成** → LLMによる具体的な修正内容生成
+5. **ファイル適用** → 生成されたdiffを実際のファイルに適用
+6. **PR作成** → PAT_TOKENでプルリクエスト自動作成
+7. **CI実行** → 自動テスト・品質チェック実行
+
+### AIレビュー応答フロー
+1. **レビュー/コメント** → AIレビュー応答トリガー
+2. **内容解析** → パターン認識と分類
+3. **指示生成** → AI による具体的な変更指示作成
+4. **コード修正** → 安全な変更適用
+5. **ブランチ更新** → 自動コミット・プッシュ
 
 ## 4. 技術仕様
-- 言語: Python 3.8+
-- AI: OpenAI API (GPT-4推奨)
-- CI/CD: GitHub Actions (4つのワークフロー連携)
-- 認証: PAT_TOKEN (Personal Access Token)
-- 対応形式: Unified Diff形式での変更適用
-- 型チェック: MyPy統合
-- 品質保証: 複数段階のCI/CDパイプライン
+
+- **言語**: Python 3.12+
+- **AI**: OpenAI API (GPT-4推奨)
+- **CI/CD**: GitHub Actions (5つのワークフロー連携)
+- **認証**: PAT_TOKEN (Personal Access Token)
+- **対応形式**: Unified Diff形式での変更適用
+- **型チェック**: MyPy統合
+- **品質保証**: 複数段階のCI/CDパイプライン
 
 ## 5. 設定要件
-- OPENAI_API_KEY: OpenAI APIキー
-- PAT_TOKEN: GitHub Personal Access Token (repo権限)
-- AI_MODEL: 使用するAIモデル (デフォルト: gpt-4)
+
+### 必須環境変数
+```yaml
+OPENAI_API_KEY: OpenAI APIキー
+PAT_TOKEN: GitHub Personal Access Token (repo権限)
+```
+
+### オプション設定
+```yaml
+AI_MODEL: 使用するAIモデル (デフォルト: gpt-4)
+DEBUG_MODE: デバッグモード (デフォルト: false)
+```
 
 ## 6. ワークフロー連携
-- unified-ai-issue-to-pr.yml: 統合処理（Issue解析→AI生成→PR作成）
-- ci.yml: PR作成後の自動テスト実行
-- typecheck.yml: 型安全性の継続的チェック
-- secret-smoke.yml: セキュリティ検証の自動実行
 
-## 7. 品質保証
-- PAT_TOKEN使用によるCI自動実行
-- テスト結果のプルリクエスト表示
-- 自動品質チェック機能
+- **unified-ai-issue-to-pr.yml**: 統合処理（Issue解析→AI生成→PR作成）
+- **ai-review-response.yml**: レビュー処理（レビュー解析→AI修正→ブランチ更新）
+- **ci.yml**: PR作成後の自動テスト実行
+- **typecheck.yml**: 型安全性の継続的チェック
+- **secret-smoke.yml**: セキュリティ検証の自動実行
 
-## 8. アーキテクチャ特徴
-- 統合ワークフロー設計による安定性向上
-- 責任分離による高い保守性
-- 型安全性重視の開発手法
-- セキュリティファーストなアプローチ
-- 段階的拡張が可能な柔軟性
+## 7. 使用方法
 
-## 9. 制限事項・注意点
-- OpenAI API使用料金
-- GitHub Actions実行時間制限
-- PAT_TOKEN権限設定の重要性
-- LLM生成内容の品質依存性
+### Issue-to-PR自動化
+```bash
+# Issueの作成例
+Title: "ユーザー認証システム追加"
+Body: "メール/パスワードでのログイン機能とセッション管理を実装してください"
+Label: ai-assistant  # 必須ラベル
+```
+
+### AIレビュー応答
+```bash
+# PRレビューでのトリガー
+Review Status: "Request changes"
+Comment: "ログイン関数にエラーハンドリングが必要です"
+
+# コメントでのトリガー
+@ai-assistant エラーハンドリングを追加してください
+```
+
+## 8. 品質保証
+
+- **PAT_TOKEN使用による CI自動実行**
+- **テスト結果のプルリクエスト表示**
+- **自動品質チェック機能**
+- **MyPy型チェック統合**
+- **セキュリティ検証の自動化**
+
+## 9. セキュリティ機能
+
+### ループ防止
+- AI生成ブランチの自動除外パターン
+- 並行実行制御
+- ブランチ命名戦略による競合回避
+
+### アクセス制御
+- トークン検証と権限チェック
+- 環境変数のセキュリティ
+- 安全なファイル操作とロールバック機能
+
+## 10. アーキテクチャ特徴
+
+- **統合ワークフロー設計による安定性向上**
+- **責任分離による高い保守性**
+- **型安全性重視の開発手法**
+- **セキュリティファーストなアプローチ**
+- **段階的拡張が可能な柔軟性**
+
+## 11. 制限事項・注意点
+
+- **OpenAI API使用料金**の発生
+- **GitHub Actions実行時間制限**
+- **PAT_TOKEN権限設定の重要性**
+- **LLM生成内容の品質依存性**
+- **APIレート制限への対応**
+
+## 12. トラブルシューティング
+
+### 一般的な問題
+- **API制限エラー**: OpenAI APIの使用量確認
+- **権限エラー**: PAT_TOKENのスコープ確認  
+- **型チェックエラー**: MyPy準拠の確認
+- **ワークフロー失敗**: GitHub Actionsログの確認
+
+### パフォーマンス最適化
+- **モデル選択**: 複雑さに応じたコスト vs パフォーマンスバランス
+- **バッチ処理**: 効率的なAPI利用
+- **キャッシュ活用**: レスポンスと計算結果のキャッシュ
+- **並列処理**: 同時オペレーションの管理
