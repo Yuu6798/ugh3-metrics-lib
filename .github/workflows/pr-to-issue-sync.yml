@@ -1,0 +1,29 @@
+name: PR to Issue Sync
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  sync_issue:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run issue closer
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: python scripts/issue_closer.py
+
+    - name: Add comment and label if PR closed
+      run: python scripts/issue_closer.py --closed
