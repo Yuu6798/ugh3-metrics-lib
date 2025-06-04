@@ -1,13 +1,23 @@
+## 2. システム構成
+
+📁 システム構成
+├── .github/workflows/
+│   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR完全自動化）
+│   ├── ci.yml                      # CI/テスト実行ワークフロー
+│   ├── typecheck.yml               # 型チェック専用ワークフロー
+│   └── secret-smoke.yml            # シークレット検証ワークフロー
+└── scripts/
+    ├── ai_issue_codegen.py         # AIコード生成エンジン（メイン処理）
+    ├── progress_tracker.py         # リアルタイムプログレス表示システム
+    └── recalc_deltae.py            # ΔE再計算ユーティリティ
 以下に整理されたフォルダツリー構造と各ファイルの役割を示します。
 │   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR完全自動化）
 │   ├── ci.yml                      # CI/テスト実行ワークフロー
 │   ├── typecheck.yml               # 型チェック専用ワークフロー
 │   └── secret-smoke.yml            # シークレット検証ワークフロー
 # イシュー連動コード生成自動化プログラム仕様
-
 ## 1. プログラム概要
 自然言語のイシュー本文から自動でコード生成・プルリクエスト作成を行うプログラムです。リアルタイムプログレス表示機能を備え、CI/CD統合による品質保証を実現します。
-
 ## 2. システム構成
 ```
 📁 システム構成
