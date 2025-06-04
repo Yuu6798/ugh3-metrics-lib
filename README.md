@@ -1,3 +1,4 @@
+│   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR完全自動化）
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
@@ -8,6 +9,8 @@ UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE ope
 本リポジトリはPoR (Proof of Resonance) やΔE (存在エネルギー差)、grv (語彙重力) といった指標をPythonから簡単に計算するためのツール集です。
 
 │   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR自動化）
+unified-ai-issue-to-pr.yml: 統合処理（Issue検証→AI解析→コード生成→PR作成→進捗管理）
+CI/CD: GitHub Actions (4つのワークフロー連携) - 統合により効率化
 │   ├── ci.yml                      # CI/テスト実行ワークフロー
 │   ├── typecheck.yml               # 型チェック専用ワークフロー
 │   └── secret-smoke.yml            # シークレット検証ワークフロー
@@ -18,6 +21,11 @@ UGHer理論に基づき、AI内在ダイナミクスを評価するための基�
 
 方法1: GitHubから直接インストール
 pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
+競合排除設計: 重複実行防止による安定性向上
+統合ワークフロー: 単一責任による保守性改善  
+条件実行: Issue内容に応じた適応的処理
+エラーハンドリング強化: 各段階での例外処理
+プログレス統一管理: 一貫した進捗表示
 
 方法2: 開発用インストール
 git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
@@ -25,6 +33,10 @@ cd ugh3-metrics-lib
 pip install -e .
 
 方法3: 依存関係のみインストール
+Issue検証機能: 無効なIssueの早期検出
+条件分岐処理: キーワード検出による処理選択
+peter-evans/create-pull-request使用: より安定したPR作成
+統一認証: PAT_TOKENによる一貫した権限管理
 pip install -r requirements.txt
 ## Features / 特徴
 ## アーキテクチャ特徴
