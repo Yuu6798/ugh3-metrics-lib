@@ -24,7 +24,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from typing import Optional
+from typing import Optional, Dict, Any, cast
 
 
 def extract_issue_number(text: Optional[str]) -> Optional[int]:
@@ -40,7 +40,7 @@ def extract_issue_number(text: Optional[str]) -> Optional[int]:
     return None
 
 
-def github_request(url: str, method: str = "POST", data: Optional[dict] = None) -> Optional[dict]:
+def github_request(url: str, method: str = "POST", data: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("GITHUB_TOKEN not set")
@@ -58,7 +58,7 @@ def github_request(url: str, method: str = "POST", data: Optional[dict] = None) 
 
     try:
         with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return cast(Dict[str, Any], json.loads(resp.read().decode("utf-8")))
     except urllib.error.HTTPError as e:
         print(f"HTTP Error {e.code}: {e.reason}")
         try:
