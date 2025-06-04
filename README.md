@@ -13,6 +13,73 @@ UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE ope
 │   └── secret-smoke.yml            # シークレット検証ワークフロー
 unified-ai-issue-to-pr.yml : 統合処理（Issue解析→AI生成→PR作成→進捗管理）
 
+## 🤖 AI開発プラットフォーム
+
+自然言語のイシューから自動でコード生成・プルリクエスト作成を行う完全自動化システム
+
+### 主要機能
+- **Issue-to-PR自動化**: 自然言語→AI解析→コード生成→PR作成の完全自動化
+- **AIレビュー応答**: PRレビュー・コメントの自動処理とコード修正
+- **リアルタイム進捗**: AI処理中のライブステータス更新
+- **多段階CI/CD**: 品質保証パイプライン統合
+
+### システム構成
+```
+AI開発プラットフォーム
+├── .github/workflows/
+│   ├── unified-ai-issue-to-pr.yml     # Issue→PR完全自動化
+│   ├── ai-review-response.yml         # AIレビュー応答システム  
+│   ├── ci.yml                         # CI/テスト実行
+│   ├── typecheck.yml                  # 型チェック専用
+│   └── secret-smoke.yml               # シークレット検証
+└── scripts/
+    ├── ai_issue_codegen.py            # AIコード生成エンジン
+    ├── review_processor.py            # レビュー応答プロセッサー
+    ├── progress_tracker.py            # リアルタイム進捗表示
+    └── recalc_deltae.py              # ΔE再計算ユーティリティ
+```
+
+### 使用方法
+
+#### Issue-to-PR自動化
+1. Issueに`ai-assistant`ラベルを追加
+2. 自然言語で要件を記述
+3. システムが自動でPR作成
+
+```
+例:
+Title: "ユーザー認証システム追加"  
+Body: "メール/パスワードでのログイン機能とセッション管理を実装"
+Label: ai-assistant
+```
+
+#### AIレビュー応答
+PR reviewで「Request changes」またはコメントで`@ai-assistant`を使用
+
+```
+例:
+@ai-assistant エラーハンドリングを追加してください
+```
+
+### 技術仕様
+- **Python 3.12+** + **OpenAI GPT-4**
+- **GitHub Actions** (5ワークフロー統合)
+- **MyPy型チェック** + **包括的CI/CD**
+- **PAT_TOKEN認証** + **セキュリティ機能**
+
+### 必要な設定
+```yaml
+OPENAI_API_KEY: OpenAI APIキー
+PAT_TOKEN: GitHub Personal Access Token
+AI_MODEL: gpt-4 (推奨)
+```
+
+### セキュリティ
+- ループ防止機能
+- アクセス制御
+- 安全なファイル操作
+- 並行実行制御
+
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
 
