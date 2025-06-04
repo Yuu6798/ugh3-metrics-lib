@@ -7,6 +7,11 @@
 UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE open source library and reference implementation).
 本リポジトリはPoR (Proof of Resonance) やΔE (存在エネルギー差)、grv (語彙重力) といった指標をPythonから簡単に計算するためのツール集です。
 
+│   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR自動化）
+│   ├── ci.yml                      # CI/テスト実行ワークフロー
+│   ├── typecheck.yml               # 型チェック専用ワークフロー
+│   └── secret-smoke.yml            # シークレット検証ワークフロー
+unified-ai-issue-to-pr.yml : 統合処理（Issue解析→AI生成→PR作成→進捗管理）
 
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
@@ -22,6 +27,10 @@ pip install -e .
 方法3: 依存関係のみインストール
 pip install -r requirements.txt
 ## Features / 特徴
+## アーキテクチャ特徴
+- 競合排除設計: 重複実行防止による安定性向上
+- 統合ワークフロー: 単一責任による保守性改善
+- 条件実行: Issue内容に応じた適応的処理
 - PoR（共鳴点）トリガー計算
 - ΔE（存在エネルギー差）スコア計算
 - grv（語彙重力）メトリクス計算
