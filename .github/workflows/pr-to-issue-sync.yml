@@ -3,27 +3,28 @@ name: PR to Issue Sync
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
 
 jobs:
   sync_issue:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+      - name: Sync pull request with issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ISSUE_NUMBER: ${{ github.event.pull_request.body }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/pr_to_issue_sync.py
+        continue-on-error: false
 
-    - name: Run issue closer
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-      run: python scripts/issue_closer.py
-
-    - name: Add comment and label if PR closed
-      run: python scripts/issue_closer.py --closed
