@@ -1,3 +1,3 @@
-from .config_loader import load_config, CONFIG
+"""Make ``utils`` a Python package."""
 
-__all__ = ["load_config", "CONFIG"]
+# utils パッケージを認識させるための空ファイル
