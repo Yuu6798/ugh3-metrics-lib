@@ -37,12 +37,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          # collector.csv を dialogs.csv として直接出力
+          # 1) Q&A 生成 → dialogs.csv を runs/<exp_id>/ に保存
           python facade/collector.py --auto -n ${{ inputs.turns }} \
           --q-provider openai --ai-provider openai \
           --quiet --summary \
           --output dialogs.csv
-          python scripts/csv_to_jsonl.py dialogs.csv dialogs.jsonl
+          # 2) 直近の runs ディレクトリを取得して変換
+          run_dir=$(ls -td runs/* | head -n 1)
+          python scripts/csv_to_jsonl.py "$run_dir/dialogs.csv" dialogs.jsonl
       - name: Auto tag
         run: |
           python scripts/classify_domain.py --inp tech.jsonl --out tech_tagged.jsonl --domain tech
