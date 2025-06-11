@@ -1,10 +1,9 @@
 import argparse
 import os
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import pandas as pd
 import numpy as np
-from numpy.typing import NDArray
 import matplotlib
 matplotlib.use("Agg")  # CI 環境向け
 import matplotlib.pyplot as plt
@@ -12,15 +11,15 @@ import seaborn as sns  # type: ignore[import-not-found]
 from scipy import stats  # type: ignore[import-not-found]
 
 
-def cohens_d(x: NDArray[np.floating], y: NDArray[np.floating]) -> float:
+def cohens_d(x: np.ndarray[Any, Any], y: np.ndarray[Any, Any]) -> float:
     """Cohen's d for paired samples (returns float)."""
-    diff: NDArray[np.floating] = x - y
+    diff: np.ndarray[Any, Any] = x - y
     return float(diff.mean() / diff.std(ddof=1))
 
 
 def bootstrap_ci(
-    data: NDArray[np.floating],
-    func: Callable[[NDArray[np.floating]], float],
+    data: np.ndarray[Any, Any],
+    func: Callable[[np.ndarray[Any, Any]], float],
     n_boot: int = 1000,
     alpha: float = 0.05
 ) -> Tuple[float, float]:

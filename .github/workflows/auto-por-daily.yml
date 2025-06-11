@@ -26,6 +26,7 @@ jobs:
 
       - name: Install deps
         run: |
+          pip install "numpy>=1.22"
           pip install -r requirements.txt
           pip install bert-score evaluate matplotlib seaborn scikit-learn
 

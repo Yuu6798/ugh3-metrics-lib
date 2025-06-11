@@ -1,6 +1,7 @@
 matplotlib
 pytest
 pandas
+numpy>=1.22
 seaborn
 mypy
 types-PyYAML          # for mypy stub of PyYAML
