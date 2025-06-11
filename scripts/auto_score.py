@@ -2,9 +2,9 @@ import argparse
 import warnings
 
 import numpy as np
-import pandas as pd
-from bert_score import score as bert_score
-import evaluate
+import pandas as pd  # type: ignore[import-not-found]
+from bert_score import score as bert_score  # type: ignore[import-not-found]
+import evaluate  # type: ignore[import-not-found]
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -48,7 +48,7 @@ def main() -> None:
     try:
         bleurt = evaluate.load("bleurt")
         bleurt_res = bleurt.compute(predictions=candidates, references=references)
-        df["bleurt"] = bleurt_res["scores"]
+        df["bleurt"] = [float(s) for s in bleurt_res["scores"]]
     except Exception:
         df["bleurt"] = np.nan
 
