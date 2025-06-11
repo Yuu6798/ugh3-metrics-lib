@@ -186,9 +186,6 @@ PoR scores over time. Running the script will save an image to
 
 ![Phase Map](images/phase_map.png)
 
-## Contribution / コントリビュート
-改善提案やバグ報告はPull RequestまたはIssueでお願いします。
-
 ## PoR Automation / 日次自動化パイプライン
 
 | Workflow | Cron (UTC) | JST | 主要ステップ | 成果物 |
@@ -217,6 +214,9 @@ python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai
 
 </details>
 ```
+
+## Contribution / コントリビュート
+改善提案やバグ報告はPull RequestまたはIssueでお願いします。
 
 ## License / ライセンス
 MIT License
