@@ -1,6 +1,8 @@
 import argparse
 import warnings
 
+from typing import Any
+
 import numpy as np
 import pandas as pd  # type: ignore[import-not-found]
 from bert_score import score as bert_score  # type: ignore[import-not-found]
@@ -54,8 +56,9 @@ def main() -> None:
 
     df["domain"] = df["question"].apply(classify_domain)
 
-    metrics = ["por", "delta_e", "grv", "bertscore", "bleurt", "rougeL"]
-    adopt = np.ones(len(df), dtype=bool)
+    metrics: list[str] = ["por", "delta_e", "grv", "bertscore", "bleurt", "rougeL"]
+    # 明示的に型注釈を付与して mypy の var-annotated エラーを回避
+    adopt: np.ndarray[Any, Any] = np.ones(len(df), dtype=bool)
     for m in metrics:
         q_low, q_high = df[m].quantile([0.05, 0.95]).values
         adopt &= (df[m] >= q_low) & (df[m] <= q_high)
