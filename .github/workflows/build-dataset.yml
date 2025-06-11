@@ -35,6 +35,7 @@ jobs:
       - name: Generate dialogs
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           # collector.csv を dialogs.csv として直接出力
           python facade/collector.py --auto -n ${{ inputs.turns }} \

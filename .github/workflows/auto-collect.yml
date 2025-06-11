@@ -27,6 +27,7 @@ jobs:
       - name: Run collector
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
         id: collect
         run: |
           python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
