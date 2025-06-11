@@ -490,7 +490,13 @@ def run_cycle(
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
-    parser.add_argument("-n", "--steps", type=int, default=10, help="number of cycles")
+    parser.add_argument(
+        "-n",
+        "--steps",
+        type=int,
+        default=50,
+        help="number of cycles",
+    )
     parser.add_argument(
         "-o",
         "--output",
