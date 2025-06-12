@@ -6,7 +6,9 @@ from typing import Any
 import numpy as np
 import pandas as pd  # type: ignore[import-not-found]
 from bert_score import score as bert_score  # type: ignore[import-not-found]
-import evaluate  # type: ignore[import-not-found]
+from comet import load  # type: ignore[import-not-found]
+from rouge_score import rouge_scorer
+import fugashi
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -42,21 +44,29 @@ def main() -> None:
     # bert_score は torch.Tensor を返すので Python list に変換
     df["bertscore"] = f1.cpu().numpy().tolist()
 
-    rouge = evaluate.load("rouge")
-    rouge_res = rouge.compute(predictions=candidates, references=references)
-    df["rougeL"] = rouge_res["rougeL"]
+    # ===== COMET-Kiwi（多言語BLEURT代替） =====
+    comet_model = load("Unbabel/wmt22-cometkiwi-da")
+    comet_scores = comet_model.predict(
+        src=candidates,
+        mt=candidates,
+        ref=references
+    )["scores"]
+    df["cometkiwi"] = [float(s) for s in comet_scores]
 
-    # BLEURT: 日本語でモデルが無い場合は NaN を埋める
-    try:
-        bleurt = evaluate.load("bleurt")
-        bleurt_res = bleurt.compute(predictions=candidates, references=references)
-        df["bleurt"] = [float(s) for s in bleurt_res["scores"]]
-    except Exception:
-        df["bleurt"] = np.nan
+    # ===== 日本語Rouge-L (MeCab+rouge_score) =====
+    tagger = fugashi.Tagger()
+    def tokenize_ja(text: str) -> str:
+        return " ".join(tok.surface for tok in tagger(text))
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
+    rouge_vals = [
+        scorer.score(tokenize_ja(ref), tokenize_ja(pred))["rougeL"].fmeasure
+        for pred, ref in zip(candidates, references)
+    ]
+    df["rougeL"] = rouge_vals
 
     df["domain"] = df["question"].apply(classify_domain)
 
-    metrics: list[str] = ["por", "delta_e", "grv", "bertscore", "bleurt", "rougeL"]
+    metrics: list[str] = ["por", "delta_e", "grv", "bertscore", "cometkiwi", "rougeL"]
     # 明示的に型注釈を付与して mypy の var-annotated エラーを回避
     adopt: np.ndarray[Any, Any] = np.ones(len(df), dtype=bool)
     for m in metrics:
