@@ -1,8 +1,13 @@
 matplotlib
 pytest
 pandas
-numpy>=1.22
+numpy>=1.22             # for numpy typing stubs
+rouge-score>=0.1.2      # evaluate/rouge dependency
+nltk>=3.8               # evaluate/rouge dependency
+absl-py>=1.0            # evaluate/rouge dependency
 seaborn
+bert-score
+evaluate
 mypy
 types-PyYAML          # for mypy stub of PyYAML
 # ---------------- core ML / NLP 依存 ----------------
