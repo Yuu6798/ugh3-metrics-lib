@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 60   # BLEURT モデルDLの余裕確保
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # ルートを PYTHONPATH に追加して utils パッケージを解決
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +31,8 @@ jobs:
           pip install "numpy>=1.22"
           pip install -r requirements.txt
           pip install bert-score evaluate matplotlib seaborn scikit-learn
+          # ← 追加：パッケージを editable でインストール
+          pip install -e .
 
       - name: Collect 50 QA pairs
         run: |
