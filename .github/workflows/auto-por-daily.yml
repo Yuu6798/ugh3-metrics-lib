@@ -40,6 +40,15 @@ jobs:
             --q-provider openai --ai-provider openai \
             --quiet --output daily_raw.csv
 
+      # ---- new step: copy the generated CSV from runs/<latest>/ ----
+      - name: Extract daily_raw.csv
+        run: |
+          # 直近で作られた runs ディレクトリを検出
+          LATEST=$(ls -td runs/* | head -n 1)
+          echo "Latest runs dir: $LATEST"
+          cp "$LATEST/daily_raw.csv" ./daily_raw.csv
+          ls -l ./daily_raw.csv   # デバッグ表示
+
       - name: Score baseline metrics
         run: |
           python scripts/auto_score.py \
