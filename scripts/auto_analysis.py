@@ -42,7 +42,7 @@ def main() -> None:
     os.makedirs(args.report_dir, exist_ok=True)
     df = pd.read_csv(args.input)
 
-    metrics = ["por", "delta_e", "grv", "bertscore", "bleurt", "rougeL"]
+    metrics = ["por", "delta_e", "grv", "bertscore", "cometkiwi", "rougeL"]
 
     for m in metrics:
         plt.figure()
@@ -65,7 +65,7 @@ def main() -> None:
     plt.close()
 
     results = []
-    baseline = ["bertscore", "bleurt", "rougeL"]
+    baseline = ["bertscore", "cometkiwi", "rougeL"]
     bonf_factor = len(baseline)
     for m in baseline:
         paired = df[["por", m]].dropna()
