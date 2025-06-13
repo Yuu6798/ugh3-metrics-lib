@@ -51,6 +51,8 @@ def test_run_cycle_generates_csv(tmp_path: Path) -> None:
         "por",
         "delta_e",
         "grv",
+        "domain",
+        "difficulty",
         "timestamp",
     ]
     assert 1 <= len(rows) <= steps

@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import csv
 import time
+import itertools
+import random
 from dataclasses import dataclass, asdict, field
 from difflib import SequenceMatcher
 from math import log1p
@@ -40,6 +42,18 @@ except Exception:  # pragma: no cover - optional dependency
     pass
 
 from facade.trigger import por_trigger
+
+DOMAINS: list[str] = ["general", "creative", "technical", "specialized"]
+DIFFICULTIES: list[int] = [1, 2, 3, 4, 5]
+
+
+def stratified_pairs(n: int) -> list[tuple[str, int]]:
+    """Return ``n`` domain/difficulty pairs with roughly equal coverage."""
+    base = list(itertools.product(DOMAINS, DIFFICULTIES))
+    q, r = divmod(n, len(base))
+    pairs = base * q + random.sample(base, r) if r else base * q
+    random.shuffle(pairs)
+    return pairs
 
 
 def _load_embedder() -> SentenceTransformer:
@@ -241,7 +255,11 @@ def _similarity(text1: str, text2: str) -> float:
 
 
 def generate_next_question(
-    prev_answer: str, history: List["HistoryEntry"], provider: str
+    prev_answer: str,
+    history: List["HistoryEntry"],
+    provider: str,
+    domain: str,
+    difficulty: int,
 ) -> str:
     """Return the next question using the specified LLM provider."""
     if provider == "template":
@@ -255,7 +273,8 @@ def generate_next_question(
         )
         return q
     prompt = (
-        f"あなたは研究用データ収集AIです。前の回答「{prev_answer}」を踏まえ、関連しつつも"
+        f"あなたは研究用データ収集AIです。ドメイン『{domain}』で難易度{difficulty}"
+        f"の質問を作成します。前の回答「{prev_answer}」を踏まえ、関連しつつも"
         "テーマや視点を少し変えた新しい質問を1文生成してください。"
     )
     if provider == "openai":
@@ -370,6 +389,8 @@ class HistoryEntry:
     por: float
     delta_e: float
     grv: float
+    domain: str
+    difficulty: int
     timestamp: float = field(default_factory=time.time)
 
 # --- 互換エイリアス ------------
@@ -424,8 +445,9 @@ def run_cycle(
 
     provider = ai_provider or os.getenv("AI_PROVIDER", "dummy")
     q_prov = q_provider
+    dd_pairs = stratified_pairs(steps)
 
-    for idx in iter_range:
+    for idx, (domain, difficulty) in zip(iter_range, dd_pairs):
         if stdin_mode:
             question = sys.stdin.readline().strip()
             if not question:
@@ -433,7 +455,7 @@ def run_cycle(
         elif interactive:
             question = input(f"質問{idx + 1}: ")
         else:
-            question = generate_next_question(prev_answer or "", history, q_prov)
+            question = generate_next_question(prev_answer or "", history, q_prov, domain, difficulty)
 
         answer = get_ai_response(question, provider=provider)
         params = estimate_ugh_params(question, history)
@@ -450,7 +472,7 @@ def run_cycle(
             print(f"【総合】{score:.3f} → {decision}")
 
         if adopted:
-            history.append(HistoryEntry(question, answer, por, de, grv))
+            history.append(HistoryEntry(question, answer, por, de, grv, domain, difficulty))
             if jsonl_path is not None:
                 rec_dict = {
                     "question": question,
@@ -458,6 +480,8 @@ def run_cycle(
                     "por": por,
                     "delta_e": de,
                     "grv": grv,
+                    "domain": domain,
+                    "difficulty": difficulty,
                     "provider": provider,
                 }
                 with open(jsonl_path, "a", encoding="utf-8") as jfh:
@@ -489,13 +513,13 @@ def run_cycle(
 
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
-    parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector")
+    parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector (ばらつき付き自動生成)")
     parser.add_argument(
         "-n",
         "--steps",
         type=int,
         default=50,
-        help="number of cycles (default: 50)",
+        help="number of cycles with stratified domain/difficulty (default: 50)",
     )
     parser.add_argument(
         "-o",
