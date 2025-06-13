@@ -201,6 +201,7 @@ PoR scores over time. Running the script will save an image to
 # 手動テスト (GitHub Actions の Run workflow でも可)
 python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai \
   --quiet --summary --output test_por.csv
+# ドメインと難易度は内部で自動的にばらつきを付けて生成されます
 
 <details>
 <summary>Mermaid Flow</summary>graph TD
