@@ -38,7 +38,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # 1) Q&A 生成 → dialogs.csv を runs/<exp_id>/ に保存
-          python facade/collector.py --auto -n ${{ inputs.turns }} \
+          python facade/collector.py --auto -n 50 \
           --q-provider openai --ai-provider openai \
           --quiet --summary \
           --output dialogs.csv
