@@ -495,7 +495,7 @@ def main(argv: List[str] | None = None) -> None:
         "--steps",
         type=int,
         default=50,
-        help="number of cycles",
+        help="number of cycles (default: 50)",
     )
     parser.add_argument(
         "-o",
