@@ -33,11 +33,13 @@ jobs:
           pip install -e .
       - name: Warm cache – COMET-Kiwi
         run: |
-          python - << 'PY'
-from comet.download_utils import download_model
-download_model("Unbabel/wmt22-cometkiwi-da")
-print("COMET-Kiwi ready.")
-PY
+          # #### BEGIN COMET-CACHE
+          python - <<'PY'
+          from comet.download_utils import download_model
+          download_model("Unbabel/wmt22-cometkiwi-da")
+          print("COMET-Kiwi ready.")
+          PY
+          # #### END COMET-CACHE
 
       - name: Collect 50 QA pairs
         run: |
