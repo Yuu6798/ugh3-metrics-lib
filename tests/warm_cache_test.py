@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 from pathlib import Path
+from _pytest.monkeypatch import MonkeyPatch  # type: ignore[import-not-found,unused-ignore]
 
 
 # prepare fake comet package for subprocess and module import
@@ -30,8 +31,8 @@ def test_cli_help() -> None:
     assert 'Warm COMET model cache' in result.stdout
 
 
-def test_download_models(monkeypatch) -> None:
-    called = []
+def test_download_models(monkeypatch: MonkeyPatch) -> None:
+    called: list[str] = []
 
     def fake_download(model: str) -> None:
         called.append(model)
