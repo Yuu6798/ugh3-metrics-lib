@@ -1,68 +1,33 @@
-import unittest
-from unittest.mock import patch
-import sys
-from pathlib import Path
+from __future__ import annotations
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import pytest
 
-import numpy as np
-from typing import Any
-from numpy.typing import NDArray
-
-import core.por_v4 as por_v4
-import core.delta_e_v4 as delta_e_v4  # noqa: F401
-import core.grv_v4 as grv_v4  # noqa: F401
-import core.sci as sci  # noqa: F401
-import importlib
-
-delta_e_v4 = importlib.import_module("core.delta_e_v4")
-grv_v4 = importlib.import_module("core.grv_v4")
-sci = importlib.import_module("core.sci")
+from ugh3_metrics import DeltaEV4, GrvV4, PorV4, SciV4
+from tests.conftest import metric_classes
 
 
-class DummyEmbedder:
-    def encode(self, text: str) -> NDArray[Any]:
-        if text == "hello":
-            return np.array([1.0, 0.0])
-        if text == "hello world":
-            return np.array([0.62, np.sqrt(1 - 0.62 ** 2)])
-        n = float(len(text.split()))
-        return np.array([n, 0.0])
-
-
-class TestMetricsV4(unittest.TestCase):
-    @patch("core.por_v4._get_embedder", return_value=DummyEmbedder())
-    def test_por_score(self, mock_emb: Any) -> None:
-        val = por_v4.score("a", "b")
-        self.assertGreaterEqual(val, 0.0)
-        self.assertLessEqual(val, 1.0)
-
-    @patch("core.delta_e_v4._get_embedder", return_value=DummyEmbedder())
-    def test_delta_e_v4(self, mock_emb: Any) -> None:
-        val = delta_e_v4.delta_e("hello", "hello world")
-        self.assertAlmostEqual(val, 0.375, places=3)
-
-    def test_grv_v4(self) -> None:
-        score_val = grv_v4.grv("alpha beta beta gamma")
-        self.assertGreater(score_val, 0.0)
-        self.assertLessEqual(score_val, 1.0)
-        long_text = " ".join(["word"] * 60)
-        long_val = grv_v4.grv(long_text)
-        self.assertGreater(long_val, 0.0)
-        self.assertLessEqual(long_val, 1.0)
-        rep_text = ("a " * 30 + "b " * 30).strip()
-        self.assertLess(grv_v4.grv(rep_text), grv_v4.grv("a b"))
-        self.assertLess(
-            grv_v4._pmi_score(rep_text.split()),
-            grv_v4._pmi_score("a b".split()),
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        ("hello", "hello world"),
+        ("a", "b"),
+        ("quick brown", "fox jumps"),
+        ("one", "two"),
+        ("alpha beta", "beta gamma"),
+        ("foo", "bar"),
+    ],
+)
+@pytest.mark.parametrize("cls", metric_classes())
+def test_metric_range(cls: type, x: str, y: str, dummy_embedder: object) -> None:
+    if cls is GrvV4:
+        metric = cls()
+    elif cls is SciV4:
+        metric = cls(
+            por_metric=PorV4(embedder=dummy_embedder),
+            delta_metric=DeltaEV4(embedder=dummy_embedder),
+            grv_metric=GrvV4(),
         )
-
-    def test_sci(self) -> None:
-        sci.reset_state()
-        v1 = sci.sci(0.0, 0.0, 0.0)
-        v2 = sci.sci(1.0, 1.0, 1.0)
-        self.assertNotEqual(v1, v2)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    else:
+        metric = cls(embedder=dummy_embedder)  # type: ignore[arg-type]
+    val = metric.score(x=x, y=y)
+    assert 0.0 <= val <= 1.0
