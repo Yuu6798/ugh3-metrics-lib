@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Any
+from numpy.typing import NDArray
 
-DEFAULT_WEIGHTS: np.ndarray = np.array([0.4, 0.45, 0.15])
+DEFAULT_WEIGHTS: NDArray[Any] = np.array([0.4, 0.45, 0.15])
 DEFAULT_ALPHA: float = 0.3
 _STATE: float | None = None
 

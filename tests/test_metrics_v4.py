@@ -6,6 +6,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
+from typing import Any
+from numpy.typing import NDArray
 
 import core.por_v4 as por_v4
 import core.delta_e_v4 as delta_e_v4  # noqa: F401
@@ -19,7 +21,7 @@ sci = importlib.import_module("core.sci")
 
 
 class DummyEmbedder:
-    def encode(self, text: str) -> np.ndarray:
+    def encode(self, text: str) -> NDArray[Any]:
         if text == "hello":
             return np.array([1.0, 0.0])
         if text == "hello world":

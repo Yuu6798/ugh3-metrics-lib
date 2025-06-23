@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Any
+from numpy.typing import NDArray
 
 import numpy as np
 try:
@@ -11,7 +12,8 @@ except Exception:  # pragma: no cover - fallback for environments without the li
     class SentenceTransformer:  # type: ignore
         def __init__(self, *args: str, **kwargs: str) -> None:
             pass
-        def encode(self, text: str) -> np.ndarray:  # pragma: no cover
+
+        def encode(self, text: str) -> NDArray[Any]:  # pragma: no cover
             return np.zeros(1, dtype=float)
 
 _EMBEDDER: Optional[SentenceTransformer] = None

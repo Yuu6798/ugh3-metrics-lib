@@ -5,7 +5,8 @@ from __future__ import annotations
 import numpy as np
 from collections import Counter
 from math import log
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Any
+from numpy.typing import NDArray
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -14,7 +15,7 @@ except Exception:  # pragma: no cover - fallback if sklearn missing
         def __init__(self) -> None:
             self._arr = np.zeros((1, 0))
 
-        def toarray(self) -> np.ndarray:  # pragma: no cover - mimic sklearn matrix
+        def toarray(self) -> NDArray[Any]:  # pragma: no cover - mimic sklearn matrix
             return self._arr
 
     class TfidfVectorizer:  # type: ignore
@@ -32,7 +33,7 @@ except Exception:  # pragma: no cover - fallback if sklearn missing
             self.fit(docs)
             return _DummyMatrix()
 
-DEFAULT_WEIGHTS: np.ndarray = np.array([0.42, 0.31, 0.27])
+DEFAULT_WEIGHTS: NDArray[Any] = np.array([0.42, 0.31, 0.27])
 
 _VECTORIZER: Optional[TfidfVectorizer] = None
 
