@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd  # type: ignore[import-not-found]
 from bert_score import score as bert_score  # type: ignore[import-not-found]
-from comet import load  # type: ignore[import-not-found]
+from comet import load  # type: ignore[import-not-found, attr-defined]
 from rouge_score import rouge_scorer
 import fugashi
 
