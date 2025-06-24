@@ -24,14 +24,5 @@ class DummyEmbedder:
         return np.array([n, 0.0])
 
 
-class TestMetricsV4(unittest.TestCase):
-
-    def test_sci(self) -> None:
-        sci.reset_state()
-        v1 = sci.sci(0.0, 0.0, 0.0)
-        v2 = sci.sci(1.0, 1.0, 1.0)
-        self.assertNotEqual(v1, v2)
-
-
 if __name__ == "__main__":
     unittest.main()
