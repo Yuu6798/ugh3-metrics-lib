@@ -1,5 +1,11 @@
 target-version = "py39"
+line-length = 120
 
 [lint]
 select = ["F", "E"]
-ignore = ["F401", "E402"]
+ignore = [
+  "F401",
+  "E402",
+  "E501",
+  "E401",
+]
