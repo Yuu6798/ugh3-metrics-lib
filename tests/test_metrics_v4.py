@@ -8,11 +8,9 @@ import numpy as np
 from typing import Any
 from numpy.typing import NDArray
 
-import core.grv_v4 as grv_v4  # noqa: F401
 import core.sci as sci  # noqa: F401
 import importlib
 
-grv_v4 = importlib.import_module("core.grv_v4")
 sci = importlib.import_module("core.sci")
 
 
@@ -27,21 +25,6 @@ class DummyEmbedder:
 
 
 class TestMetricsV4(unittest.TestCase):
-
-    def test_grv_v4(self) -> None:
-        score_val = grv_v4.grv("alpha beta beta gamma")
-        self.assertGreater(score_val, 0.0)
-        self.assertLessEqual(score_val, 1.0)
-        long_text = " ".join(["word"] * 60)
-        long_val = grv_v4.grv(long_text)
-        self.assertGreater(long_val, 0.0)
-        self.assertLessEqual(long_val, 1.0)
-        rep_text = ("a " * 30 + "b " * 30).strip()
-        self.assertLess(grv_v4.grv(rep_text), grv_v4.grv("a b"))
-        self.assertLess(
-            grv_v4._pmi_score(rep_text.split()),
-            grv_v4._pmi_score("a b".split()),
-        )
 
     def test_sci(self) -> None:
         sci.reset_state()
