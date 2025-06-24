@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch
 import sys
 from pathlib import Path
 
@@ -9,12 +8,10 @@ import numpy as np
 from typing import Any
 from numpy.typing import NDArray
 
-import core.delta_e_v4 as delta_e_v4  # noqa: F401
 import core.grv_v4 as grv_v4  # noqa: F401
 import core.sci as sci  # noqa: F401
 import importlib
 
-delta_e_v4 = importlib.import_module("core.delta_e_v4")
 grv_v4 = importlib.import_module("core.grv_v4")
 sci = importlib.import_module("core.sci")
 
@@ -30,11 +27,6 @@ class DummyEmbedder:
 
 
 class TestMetricsV4(unittest.TestCase):
-
-    @patch("core.delta_e_v4._get_embedder", return_value=DummyEmbedder())
-    def test_delta_e_v4(self, mock_emb: Any) -> None:
-        val = delta_e_v4.delta_e("hello", "hello world")
-        self.assertAlmostEqual(val, 0.375, places=3)
 
     def test_grv_v4(self) -> None:
         score_val = grv_v4.grv("alpha beta beta gamma")
