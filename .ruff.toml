@@ -1,7 +1,5 @@
-[tool.ruff]
 target-version = "py39"
+
+[lint]
 select = ["F", "E"]
-ignore = [
-  "F401",  # unused import
-  "E402",  # module import not at top of file
-]
+ignore = ["F401", "E402"]
