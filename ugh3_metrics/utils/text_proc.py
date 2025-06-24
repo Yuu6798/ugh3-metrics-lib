@@ -18,6 +18,9 @@ except Exception:  # pragma: no cover - fallback if sklearn missing
             return self._arr
 
     class TfidfVectorizer:  # type: ignore
+        def __init__(self, token_pattern: str | None = None) -> None:
+            self.token_pattern = token_pattern
+
         def fit_transform(self, docs: Iterable[str]) -> _DummyMatrix:
             return _DummyMatrix()
 
@@ -43,11 +46,13 @@ def tokenize(text: str | Iterable[str]) -> list[str]:
 
 def tfidf_topk(text: str, *, k: int = 30) -> float:
     """Return average of top-k TF-IDF values for the given text."""
-    vec = TfidfVectorizer()
+    vec = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b")
     try:
         row = vec.fit_transform([text])
-    except Exception:  # pragma: no cover - stub fallback
-        row = vec.fit_transform([text])
+    except ValueError as exc:  # pragma: no cover - handle empty vocab
+        if "empty vocabulary" in str(exc):
+            return 0.0
+        raise
     arr = row.toarray().ravel()
     if arr.size == 0:
         return 0.0
