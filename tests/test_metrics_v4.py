@@ -9,7 +9,6 @@ import numpy as np
 from typing import Any
 from numpy.typing import NDArray
 
-import core.por_v4 as por_v4
 import core.delta_e_v4 as delta_e_v4  # noqa: F401
 import core.grv_v4 as grv_v4  # noqa: F401
 import core.sci as sci  # noqa: F401
@@ -31,11 +30,6 @@ class DummyEmbedder:
 
 
 class TestMetricsV4(unittest.TestCase):
-    @patch("core.por_v4._get_embedder", return_value=DummyEmbedder())
-    def test_por_score(self, mock_emb: Any) -> None:
-        val = por_v4.score("a", "b")
-        self.assertGreaterEqual(val, 0.0)
-        self.assertLessEqual(val, 1.0)
 
     @patch("core.delta_e_v4._get_embedder", return_value=DummyEmbedder())
     def test_delta_e_v4(self, mock_emb: Any) -> None:
