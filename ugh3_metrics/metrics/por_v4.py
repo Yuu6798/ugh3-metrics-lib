@@ -4,6 +4,7 @@ import numpy as np
 
 from ..models.embedder import EmbedderProtocol
 from .base import BaseMetric
+from ..utils import cosine_similarity
 
 
 class PorV4(BaseMetric):
@@ -25,9 +26,7 @@ class PorV4(BaseMetric):
             return 0.0
         v1 = self._embedder.encode(a)
         v2 = self._embedder.encode(b)
-        num = float(np.dot(v1, v2))
-        denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-        sim = num / denom if denom else 0.0
+        sim = cosine_similarity(v1, v2)
         value = 1.0 / (1.0 + np.exp(-(self.DEFAULT_ALPHA * sim + self.DEFAULT_BETA)))
         return float(value)
 

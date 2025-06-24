@@ -4,6 +4,7 @@ import numpy as np
 
 from ..models.embedder import EmbedderProtocol
 from .base import BaseMetric
+from ..utils import cosine_similarity
 
 
 class DeltaEV4(BaseMetric):
@@ -25,9 +26,7 @@ class DeltaEV4(BaseMetric):
             return 0.0
         v1 = self._embedder.encode(a)
         v2 = self._embedder.encode(b)
-        num = float(np.dot(v1, v2))
-        denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-        sim = num / denom if denom else 0.0
+        sim = cosine_similarity(v1, v2)
         diff = 1.0 - sim
         z = (diff - self.DEFAULT_MU) / self.DEFAULT_SIGMA if self.DEFAULT_SIGMA else diff - self.DEFAULT_MU
         return float(np.clip(z, 0.0, 1.0))
