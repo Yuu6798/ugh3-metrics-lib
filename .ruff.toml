@@ -5,7 +5,6 @@ line-length = 120
 select = ["F", "E"]
 ignore = [
   "F401",
-  "E402",
   "E501"
   # F841 removed to enable unused variable detection
 ]
