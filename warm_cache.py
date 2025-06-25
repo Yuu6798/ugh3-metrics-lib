@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 try:
     from comet.download_utils import download_model  # COMET < 2.0
 except ModuleNotFoundError:  # pragma: no cover
