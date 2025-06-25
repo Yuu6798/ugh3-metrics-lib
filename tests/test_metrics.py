@@ -1,10 +1,10 @@
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import sys
 import unittest
 
-from secl.qa_cycle import novelty_score, is_duplicate_question, HistoryEntry
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from secl.qa_cycle import novelty_score, is_duplicate_question, HistoryEntry  # noqa: E402
 
 
 class TestMetrics(unittest.TestCase):

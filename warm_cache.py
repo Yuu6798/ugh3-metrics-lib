@@ -1,5 +1,8 @@
 # mypy: ignore-errors
 
+import argparse
+from typing import List
+
 try:
     from comet.download_utils import download_model  # COMET < 2.0
 except ModuleNotFoundError:  # pragma: no cover
@@ -10,9 +13,6 @@ except ModuleNotFoundError:  # pragma: no cover
             "サポートされていない COMET 版です。"
             "対応バージョンをインストールするか、import ロジックを更新してください。"
         ) from exc
-
-import argparse
-from typing import List
 
 def download_models(models: List[str]) -> None:
     for model in models:
