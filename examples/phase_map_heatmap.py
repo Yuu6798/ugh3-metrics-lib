@@ -7,8 +7,8 @@ plots them using ``matplotlib.imshow``. The resulting image is saved to
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import argparse
+from dataclasses import dataclass
 import random
 import time
 from typing import List
