@@ -5,6 +5,7 @@ from typing import Any, Callable, Tuple
 import pandas as pd
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")  # CI 環境向け
 import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore[import-not-found]
@@ -18,10 +19,7 @@ def cohens_d(x: np.ndarray[Any, Any], y: np.ndarray[Any, Any]) -> float:
 
 
 def bootstrap_ci(
-    data: np.ndarray[Any, Any],
-    func: Callable[[np.ndarray[Any, Any]], float],
-    n_boot: int = 1000,
-    alpha: float = 0.05
+    data: np.ndarray[Any, Any], func: Callable[[np.ndarray[Any, Any]], float], n_boot: int = 1000, alpha: float = 0.05
 ) -> Tuple[float, float]:
     rng = np.random.default_rng(0)
     stats_ = []

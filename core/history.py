@@ -33,4 +33,5 @@ def evaluate_record(por: float, delta_e: float, grv: float) -> str:
         return OKAY
     return BAD
 
+
 __all__ = ["evaluate_record", "GOOD", "OKAY", "BAD"]

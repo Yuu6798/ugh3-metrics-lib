@@ -46,17 +46,15 @@ def main() -> None:
 
     # ===== COMET-Kiwi（多言語BLEURT代替） =====
     comet_model = load("Unbabel/wmt22-cometkiwi-da")
-    comet_scores = comet_model.predict(
-        src=candidates,
-        mt=candidates,
-        ref=references
-    )["scores"]
+    comet_scores = comet_model.predict(src=candidates, mt=candidates, ref=references)["scores"]
     df["cometkiwi"] = [float(s) for s in comet_scores]
 
     # ===== 日本語Rouge-L (MeCab+rouge_score) =====
     tagger = fugashi.Tagger()
+
     def tokenize_ja(text: str) -> str:
         return " ".join(tok.surface for tok in tagger(text))
+
     scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
     rouge_vals = [
         scorer.score(tokenize_ja(ref), tokenize_ja(pred))["rougeL"].fmeasure

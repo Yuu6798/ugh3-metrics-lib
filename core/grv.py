@@ -20,9 +20,7 @@ def _collect_vocab(texts: Iterable[str]) -> set[str]:
     return vocab
 
 
-def grv_score(
-    text: str | list[str], *, vocab_limit: int = 30, mode: str = "simple"
-) -> float:
+def grv_score(text: str | list[str], *, vocab_limit: int = 30, mode: str = "simple") -> float:
     """Calculate vocabulary gravity (grv) for the given text or list.
 
     Parameters

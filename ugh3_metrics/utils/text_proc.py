@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
 except Exception:  # pragma: no cover - fallback if sklearn missing
+
     class _DummyMatrix:
         def __init__(self) -> None:
             self._arr = np.zeros((1, 0))
@@ -23,6 +24,7 @@ except Exception:  # pragma: no cover - fallback if sklearn missing
 
         def fit_transform(self, docs: Iterable[str]) -> _DummyMatrix:
             return _DummyMatrix()
+
 
 __all__ = [
     "tokenize",

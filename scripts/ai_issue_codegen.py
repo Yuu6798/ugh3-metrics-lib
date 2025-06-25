@@ -60,38 +60,38 @@ def ensure_directory_exists(file_path: str) -> None:
 def detect_file_type(issue_body: str, file_path: str | None = None) -> str:
     """Guess file type from issue body or file path."""
     if file_path:
-        if file_path.endswith(('.yml', '.yaml')):
-            return 'yaml'
-        if file_path.endswith('.json'):
-            return 'json'
-        if file_path.endswith('.py'):
-            return 'python'
-        if file_path.endswith('.md'):
-            return 'markdown'
+        if file_path.endswith((".yml", ".yaml")):
+            return "yaml"
+        if file_path.endswith(".json"):
+            return "json"
+        if file_path.endswith(".py"):
+            return "python"
+        if file_path.endswith(".md"):
+            return "markdown"
 
     body = issue_body.lower()
-    if 'workflow' in body:
-        return 'yaml'
-    if 'json' in body or 'config' in body:
-        return 'json'
-    if 'python' in body:
-        return 'python'
-    return 'text'
+    if "workflow" in body:
+        return "yaml"
+    if "json" in body or "config" in body:
+        return "json"
+    if "python" in body:
+        return "python"
+    return "text"
 
 
 def extract_code_from_response(response: str, file_type: str) -> str:
     """Extract code block matching *file_type* from LLM response."""
     patterns = {
-        'yaml': r'```ya?ml\n(.*?)\n```',
-        'json': r'```json\n(.*?)\n```',
-        'python': r'```python\n(.*?)\n```',
+        "yaml": r"```ya?ml\n(.*?)\n```",
+        "json": r"```json\n(.*?)\n```",
+        "python": r"```python\n(.*?)\n```",
     }
     regex = patterns.get(file_type)
     if regex:
         m = re.search(regex, response, re.DOTALL)
         if m:
             return m.group(1).strip()
-    generic = re.search(r'```[^\n]*\n(.*?)\n```', response, re.DOTALL)
+    generic = re.search(r"```[^\n]*\n(.*?)\n```", response, re.DOTALL)
     if generic:
         return generic.group(1).strip()
     return response.strip()
@@ -165,8 +165,8 @@ def parse_unified_diff(diff_text: str) -> Dict[str, List[Dict[str, Any]]]:
             continue
         elif line.startswith("@@"):
             hunk_info = line.split()[1:3]
-            old_info = hunk_info[0][1:].split(',')
-            new_info = hunk_info[1][1:].split(',')
+            old_info = hunk_info[0][1:].split(",")
+            new_info = hunk_info[1][1:].split(",")
 
             old_start = int(old_info[0])
             new_start = int(new_info[0])
@@ -179,16 +179,13 @@ def parse_unified_diff(diff_text: str) -> Dict[str, List[Dict[str, Any]]]:
                 i += 1
 
             if current_file:
-                operations[current_file].append({
-                    'old_start': old_start,
-                    'new_start': new_start,
-                    'lines': hunk_lines
-                })
+                operations[current_file].append({"old_start": old_start, "new_start": new_start, "lines": hunk_lines})
             continue
 
         i += 1
 
     return operations
+
 
 def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> None:
     """Apply operations directly to file (Claude Code style)"""
@@ -201,27 +198,27 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
         print(f"[debug] creating new file: {file_path}")
         content_lines: List[str] = []
         for op in operations:
-            for line in op['lines']:
-                if line.startswith('+'):
+            for line in op["lines"]:
+                if line.startswith("+"):
                     content_lines.append(line[1:])
-        file_obj.write_text('\n'.join(content_lines), encoding='utf-8')
+        file_obj.write_text("\n".join(content_lines), encoding="utf-8")
         return
 
     try:
-        original_content: str = file_obj.read_text(encoding='utf-8')
+        original_content: str = file_obj.read_text(encoding="utf-8")
         lines: List[str] = original_content.splitlines()
     except Exception as e:
         print(f"[error] could not read {file_path}: {e}")
         raise
 
     for op in reversed(operations):
-        old_start: int = op['old_start'] - 1
+        old_start: int = op["old_start"] - 1
         remove_lines: List[str] = []
         add_lines: List[str] = []
-        for line in op['lines']:
-            if line.startswith('-'):
+        for line in op["lines"]:
+            if line.startswith("-"):
                 remove_lines.append(line[1:])
-            elif line.startswith('+'):
+            elif line.startswith("+"):
                 add_lines.append(line[1:])
         for remove_line in remove_lines:
             try:
@@ -240,11 +237,13 @@ def apply_file_operations(file_path: str, operations: List[Dict[str, Any]]) -> N
             insert_point += 1
 
     try:
-        file_obj.write_text('\n'.join(lines), encoding='utf-8')
+        file_obj.write_text("\n".join(lines), encoding="utf-8")
         print(f"[debug] successfully wrote {len(lines)} lines to {file_path}")
     except Exception as e:
         print(f"[error] could not write {file_path}: {e}")
         raise
+
+
 def main() -> None:
     """Fixed main function that properly uses LLM to generate diff from issue body"""
 
@@ -311,7 +310,7 @@ def main() -> None:
     # Get issue body from arguments or environment
     issue_body = args.issue_body_opt or args.issue_body_pos
     if not issue_body:
-        issue_body = os.environ.get('ISSUE_BODY', '')
+        issue_body = os.environ.get("ISSUE_BODY", "")
 
     if not issue_body:
         print("[ERROR] No issue body provided")

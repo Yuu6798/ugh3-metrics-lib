@@ -100,9 +100,7 @@ def main() -> None:
             comment_parts.append("低難度")
 
         comment = " / ".join(comment_parts)
-        print(
-            f"{ts} | PoR: {r.por:.3f} | ΔE: {r.delta_e:.3f} | grv: {r.grv:.3f} -> {comment}"
-        )
+        print(f"{ts} | PoR: {r.por:.3f} | ΔE: {r.delta_e:.3f} | grv: {r.grv:.3f} -> {comment}")
     plot_records(records)
 
 

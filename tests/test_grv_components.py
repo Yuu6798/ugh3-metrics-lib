@@ -1,5 +1,4 @@
-import numpy as np
-from ugh3_metrics.utils import tokenize, tfidf_topk, entropy, pmi
+from ugh3_metrics.utils import tfidf_topk, entropy, pmi
 
 TOKENS = "alpha beta beta gamma".split()
 

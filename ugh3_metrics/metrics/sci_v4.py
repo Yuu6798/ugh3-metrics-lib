@@ -36,6 +36,7 @@ class SciV4(BaseMetric):
 
 _SCI = SciV4()
 
+
 def sci(val: float) -> float:
     """Module-level wrapper for backward compatibility."""
     return _SCI.score(val, "")

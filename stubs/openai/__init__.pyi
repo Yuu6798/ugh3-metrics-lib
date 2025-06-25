@@ -9,9 +9,7 @@ class _Response(TypedDict):
     choices: List[_Choice]
 
 class _Completions(Protocol):
-    def create(
-        self, *, model: str, messages: List[dict[str, Any]], temperature: float = ...
-    ) -> _Response: ...
+    def create(self, *, model: str, messages: List[dict[str, Any]], temperature: float = ...) -> _Response: ...
 
 class _Chat:
     completions: _Completions

@@ -9,7 +9,6 @@ from ..models.embedder import EmbedderProtocol
 from ..utils import tokenize, tfidf_topk, entropy, pmi
 
 
-
 class GrvV4(BaseMetric):
     """Lexical gravity v4 metric (TF-IDF + PMI + Entropy)."""
 
@@ -45,11 +44,13 @@ class GrvV4(BaseMetric):
         if w.size != 3:
             raise ValueError("weights must have length 3")
         w = w / w.sum()
-        vals = np.array([
-            self._tfidf_score(tokens),
-            self._pmi_score(tokens),
-            self._entropy_score(tokens),
-        ])
+        vals = np.array(
+            [
+                self._tfidf_score(tokens),
+                self._pmi_score(tokens),
+                self._entropy_score(tokens),
+            ]
+        )
         x = float(np.dot(w, vals))
         return float(1.0 / (1.0 + np.exp(-x)))
 

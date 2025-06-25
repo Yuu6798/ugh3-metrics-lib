@@ -20,9 +20,8 @@ import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
-from facade.trigger import por_trigger
 from ugh3_metrics.metrics import DeltaEV4, GrvV4, PorV4
 
 _EMBEDDER: Any | None = None
@@ -58,6 +57,7 @@ def _load_embedder() -> Any:
 
             _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
         except Exception:
+
             class SimpleEmbedder:
                 def encode(self, text: str) -> list[float]:
                     return [float(len(text.split()))]
@@ -65,10 +65,11 @@ def _load_embedder() -> Any:
             _EMBEDDER = SimpleEmbedder()
     return _EMBEDDER
 
+
 # --- metric singletons ----------------------------------------------------
-_POR = PorV4()                              # PoR v4
-_DE  = DeltaEV4(embedder=_load_embedder())  # DeltaEV4 v4
-_GRV = GrvV4()                              # grv v4
+_POR = PorV4()  # PoR v4
+_DE = DeltaEV4(embedder=_load_embedder())  # DeltaEV4 v4
+_GRV = GrvV4()  # grv v4
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -89,6 +90,7 @@ POR_W2: float = 0.4
 # ---------------------------------------------------------------------------
 # Basic helpers
 # ---------------------------------------------------------------------------
+
 
 def _dummy_response(question: str) -> str:
     """Return a deterministic fallback response."""
@@ -267,9 +269,8 @@ def generate_next_question(
             simulate_generate_next_question_from_answer,
             HistoryEntry as SeHistoryEntry,
         )
-        q, _ = simulate_generate_next_question_from_answer(
-            prev_answer, cast(List[SeHistoryEntry], history)
-        )
+
+        q, _ = simulate_generate_next_question_from_answer(prev_answer, cast(List[SeHistoryEntry], history))
         return q
     prompt = (
         f"あなたは研究用データ収集AIです。ドメイン『{domain}』で難易度{difficulty}"
@@ -288,6 +289,7 @@ def generate_next_question(
 # ---------------------------------------------------------------------------
 # Metric calculations
 # ---------------------------------------------------------------------------
+
 
 def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[str, float]:
     """Return automatic UGHer parameters based on the question and history."""
@@ -318,7 +320,6 @@ def grv_score(answer: str, *, mode: str = "simple") -> float:
     return float(_GRV.score(answer, ""))
 
 
-
 def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
     """Return overall score and adoption flag."""
     score = W_POR * por + W_DE * (1 - delta_e_val) + W_GRV * grv
@@ -328,6 +329,7 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class HistoryEntry:
@@ -340,6 +342,7 @@ class HistoryEntry:
     difficulty: int
     timestamp: float = field(default_factory=time.time)
 
+
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -348,6 +351,7 @@ QARecord = HistoryEntry
 # ---------------------------------------------------------------------------
 # Cycle logic
 # ---------------------------------------------------------------------------
+
 
 def run_cycle(
     steps: int,
@@ -386,6 +390,7 @@ def run_cycle(
     # optional progress bar
     try:
         from tqdm import tqdm  # type: ignore
+
         iter_range = tqdm(range(steps), disable=quiet)
     except Exception:
         iter_range = range(steps)
@@ -456,6 +461,7 @@ def run_cycle(
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
@@ -542,6 +548,7 @@ def main(argv: List[str] | None = None) -> None:
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
     )
+
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary

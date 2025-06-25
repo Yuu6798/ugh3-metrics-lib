@@ -73,9 +73,7 @@ def plot_heatmap(history: List[PorRecord]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate a phase map heatmap from PoR values"
-    )
+    parser = argparse.ArgumentParser(description="Generate a phase map heatmap from PoR values")
     parser.add_argument(
         "--csv",
         metavar="PATH",
