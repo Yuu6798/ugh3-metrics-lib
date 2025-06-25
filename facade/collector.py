@@ -305,8 +305,8 @@ def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[st
 
 def por_score(question: str, hist: list["HistoryEntry"]) -> float:
     """Return PoR score via the v4 metric."""
-    ref = hist[-1].question if hist else ""
-    return float(_POR.score(question, ref))
+    params = estimate_ugh_params(question, hist)
+    return float(_POR.score(question, hist, params=params))  # type: ignore[arg-type, call-arg]
 
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
@@ -407,7 +407,6 @@ def run_cycle(
             question = generate_next_question(prev_answer or "", history, q_prov, domain, difficulty)
 
         answer = get_ai_response(question, provider=provider)
-        params = estimate_ugh_params(question, history)
         por = por_score(question, history)
         de = delta_e(prev_answer, answer)
         grv = grv_score(answer, mode=grv_mode)
