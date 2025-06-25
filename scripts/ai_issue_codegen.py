@@ -148,7 +148,6 @@ def parse_unified_diff(diff_text: str) -> Dict[str, List[Dict[str, Any]]]:
     """Parse unified diff into file operations (Claude Code style)"""
     operations: Dict[str, List[Dict[str, Any]]] = {}
     current_file: Optional[str] = None
-    current_hunks: List[Dict[str, Any]] = []
 
     lines = diff_text.splitlines()
     i = 0
