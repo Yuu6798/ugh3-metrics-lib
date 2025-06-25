@@ -9,7 +9,10 @@ def main() -> None:
     parser.add_argument("jsonl_out")
     args = parser.parse_args()
 
-    with open(args.csv_path, newline="", encoding="utf-8") as csv_f, open(args.jsonl_out, "w", encoding="utf-8") as out_f:
+    with (
+        open(args.csv_path, newline="", encoding="utf-8") as csv_f,
+        open(args.jsonl_out, "w", encoding="utf-8") as out_f,
+    ):
         reader = csv.DictReader(csv_f)
         for row in reader:
             json.dump(row, out_f, ensure_ascii=False)

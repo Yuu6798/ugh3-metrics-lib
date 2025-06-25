@@ -44,6 +44,7 @@ ALT_BACKUP_DIR: str = CONFIG.get("ALT_BACKUP_DIR", "backups_alt")
 BACKUP_INTERVAL: int = CONFIG.get("BACKUP_INTERVAL", 10)
 ALERT_POST_URL: str | None = CONFIG.get("ALERT_POST_URL")
 
+
 @dataclass
 class HistoryEntry:
     question: str
@@ -64,9 +65,7 @@ class HistoryEntry:
 def novelty_score(question: str, history_list: List[HistoryEntry]) -> float:
     if not history_list:
         return 1.0
-    max_similarity = max(
-        SequenceMatcher(None, question, entry.question).ratio() for entry in history_list
-    )
+    max_similarity = max(SequenceMatcher(None, question, entry.question).ratio() for entry in history_list)
     penalty = 0.5 * max_similarity
     return max(0.0, 1.0 - penalty)
 
@@ -120,11 +119,17 @@ def calc_grv_field(history_list: List[HistoryEntry], window: int = GRV_WINDOW) -
 def is_grv_stagnation(grv_history: List[float], window: int = GRV_WINDOW, threshold: float = GRV_STAGNATION_TH) -> bool:
     if len(grv_history) < window + 1:
         return False
-    diffs = [abs(grv_history[-i] - grv_history[-i-1]) for i in range(1, window+1)]
+    diffs = [abs(grv_history[-i] - grv_history[-i - 1]) for i in range(1, window + 1)]
     return sum(diffs) / window < threshold
 
 
-def update_score_threshold(delta_e_history: List[float], base_threshold: float = BASE_SCORE_THRESHOLD, window: int = DELTA_E_WINDOW, up: float = DELTA_E_UP, down: float = DELTA_E_DOWN) -> float:
+def update_score_threshold(
+    delta_e_history: List[float],
+    base_threshold: float = BASE_SCORE_THRESHOLD,
+    window: int = DELTA_E_WINDOW,
+    up: float = DELTA_E_UP,
+    down: float = DELTA_E_DOWN,
+) -> float:
     if len(delta_e_history) < window:
         return base_threshold
     avg_delta_e = sum(delta_e_history[-window:]) / window
@@ -138,9 +143,9 @@ def update_score_threshold(delta_e_history: List[float], base_threshold: float =
 def simulate_grv_gain_with_jump(current_state: Dict[str, Any], base: str = "ジャンプ") -> float:
     grv_val: float = float(current_state["grv"])
     base_vocab = set(current_state["vocab_set"])
-    added = {base + str(random.randint(100,999))}
+    added = {base + str(random.randint(100, 999))}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - grv_val
+    gain = min(1.0, len(simulated) / 30.0) - grv_val
     return gain
 
 
@@ -149,7 +154,7 @@ def simulate_grv_gain_with_external_info(current_state: Dict[str, Any]) -> float
     base_vocab = set(current_state["vocab_set"])
     added = {simulate_external_knowledge()}
     simulated = base_vocab | added
-    gain = min(1.0, len(simulated)/30.0) - grv_val
+    gain = min(1.0, len(simulated) / 30.0) - grv_val
     return gain
 
 
@@ -181,7 +186,7 @@ def detect_spike(current_score: float, history_list: List[HistoryEntry]) -> bool
 
 def save_history_to_csv(path: Path, history_list: List[HistoryEntry]) -> None:
     try:
-        with open(path, 'w', newline='', encoding='utf-8') as fh:
+        with open(path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=list(asdict(history_list[0]).keys()))
             writer.writeheader()
             for entry in history_list:
@@ -193,7 +198,7 @@ def save_history_to_csv(path: Path, history_list: List[HistoryEntry]) -> None:
 def save_history_to_json(path: Path, history_list: List[HistoryEntry]) -> None:
     """Persist history as JSON for easier external analysis."""
     try:
-        with open(path, 'w', encoding='utf-8') as fh:
+        with open(path, "w", encoding="utf-8") as fh:
             json.dump([asdict(h) for h in history_list], fh, ensure_ascii=False, indent=2)
     except Exception as exc:  # pragma: no cover - simple print
         print(f"[Error] Failed to save history JSON: {exc}")
@@ -205,8 +210,9 @@ def send_alert(message: str) -> None:
     if ALERT_POST_URL:
         try:
             import urllib.request
-            data = json.dumps({"message": message}).encode('utf-8')
-            req = urllib.request.Request(ALERT_POST_URL, data=data, headers={'Content-Type': 'application/json'})
+
+            data = json.dumps({"message": message}).encode("utf-8")
+            req = urllib.request.Request(ALERT_POST_URL, data=data, headers={"Content-Type": "application/json"})
             urllib.request.urlopen(req, timeout=5)
         except Exception as exc:  # pragma: no cover - network issues
             print(f"[Alert Error] {exc}")
@@ -254,18 +260,25 @@ def print_log_summary(history_list: List[HistoryEntry]) -> None:
         print("（履歴なし）")
         return
     for i, entry in enumerate(history_list):
-        q_disp = entry.question[:32] + '...' if len(entry.question) > 32 else entry.question
-        bar = '█' * int(entry.score * 10)
+        q_disp = entry.question[:32] + "..." if len(entry.question) > 32 else entry.question
+        bar = "█" * int(entry.score * 10)
         anomaly = entry.anomaly_por or entry.anomaly_delta_e or entry.anomaly_grv
-        flags = f"{'S' if entry.spike else ' '}|{'E' if entry.external else ' '}|{'A' if anomaly else ' '}|{'N' if entry.por_null else ' '}"
+        flags = (
+            f"{'S' if entry.spike else ' '}|"
+            f"{'E' if entry.external else ' '}|"
+            f"{'A' if anomaly else ' '}|"
+            f"{'N' if entry.por_null else ' '}"
+        )
         print(f"{i+1:02d}.Q:'{q_disp}'|S:{entry.score:.2f}|ΔE:{entry.delta_e:.2f}|Grv:{entry.grv:.2f}|{flags} {bar}")
     scores = [e.score for e in history_list]
     grvs = [e.grv for e in history_list]
     print(f"[統計] 平均S:{sum(scores)/len(scores):.2f}, 平均Grv:{sum(grvs)/len(grvs):.2f}")
-    print('-----------------------------------')
+    print("-----------------------------------")
 
 
-def simulate_generate_next_question_from_answer(answer: str, history_list: List[HistoryEntry], epsilon: float = EPS_BASE) -> Tuple[str, bool]:
+def simulate_generate_next_question_from_answer(
+    answer: str, history_list: List[HistoryEntry], epsilon: float = EPS_BASE
+) -> Tuple[str, bool]:
     ext_flag = False
     if random.random() < epsilon:
         ext_flag = True
@@ -356,13 +369,15 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
         if stagnation and step > 0 and jump_cooldown == 0:
             print("  [停滞検知] → 意味的ジャンプor外部注入判定中...")
             state = {
-                'low_por': low_por,
-                'high_delta': high_delta,
-                'stagnate_grv': stagnate_grv,
+                "low_por": low_por,
+                "high_delta": high_delta,
+                "stagnate_grv": stagnate_grv,
             }
             action = select_action_for_jump(state)
-            if action == 'jump':
-                next_question = f"(ジャンプ){current_question}＋{random.choice(['変革','未知','分岐'])}#{random.randint(1000,9999)}"
+            if action == "jump":
+                next_question = (
+                    f"(ジャンプ){current_question}＋{random.choice(['変革','未知','分岐'])}#{random.randint(1000,9999)}"
+                )
                 ext_flag = False
                 jump_cooldown = 3
             else:
@@ -370,7 +385,9 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
                 ext_flag = True
                 jump_cooldown = 3
         else:
-            next_question, ext_flag = simulate_generate_next_question_from_answer(answer, history_list, epsilon=EPS_BASE)
+            next_question, ext_flag = simulate_generate_next_question_from_answer(
+                answer, history_list, epsilon=EPS_BASE
+            )
         novelty = novelty_score(next_question, history_list)
         score = 0.6 * novelty + 0.4 * delta_e
         score = round(score, 2)
@@ -399,7 +416,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     print_log_summary(history_list)
     if save_path and history_list:
         save_history_to_csv(save_path, history_list)
-        save_history_to_json(save_path.with_suffix('.json'), history_list)
+        save_history_to_json(save_path.with_suffix(".json"), history_list)
     backup_history(Path(BACKUP_DIR), history_list, "final")
     return history_list
 

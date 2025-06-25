@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 import numpy as np
-from typing import Any
 from numpy.typing import NDArray
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

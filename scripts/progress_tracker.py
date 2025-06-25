@@ -28,9 +28,7 @@ class ProgressTracker:
         # 環境変数チェックを緩和 - 警告のみでエラーにしない
         if not self.repo or not self.token:
             print("Warning: GITHUB_REPOSITORY and/or GITHUB_TOKEN not set")
-            print(
-                "Progress tracker will run in offline mode (no GitHub API calls)"
-            )
+            print("Progress tracker will run in offline mode (no GitHub API calls)")
             self.offline_mode: bool = True
         else:
             self.offline_mode = False
@@ -63,9 +61,7 @@ class ProgressTracker:
             line: str = f"- {checkbox} {task['emoji']} {task['description']} _{task['timestamp']}_"
             lines.append(line)
 
-        current_task: Optional[Dict[str, str]] = next(
-            (t for t in self.tasks if t["status"] == "pending"), None
-        )
+        current_task: Optional[Dict[str, str]] = next((t for t in self.tasks if t["status"] == "pending"), None)
         if current_task:
             lines.extend(["", f"**現在のステップ**: {current_task['description']}"])
         else:
@@ -139,9 +135,7 @@ class ProgressTracker:
         url: str = f"https://api.github.com/repos/{self.repo}/issues/{self.issue_number}/comments"
         markdown: str = self.generate_progress_markdown()
 
-        response: Optional[Dict[str, Any]] = self._make_github_request(
-            url, "POST", {"body": markdown}
-        )
+        response: Optional[Dict[str, Any]] = self._make_github_request(url, "POST", {"body": markdown})
 
         if response and "id" in response:
             self.comment_id = int(response["id"])
@@ -167,9 +161,7 @@ class ProgressTracker:
         url: str = f"https://api.github.com/repos/{self.repo}/issues/comments/{self.comment_id}"
         markdown: str = self.generate_progress_markdown()
 
-        response: Optional[Dict[str, Any]] = self._make_github_request(
-            url, "PATCH", {"body": markdown}
-        )
+        response: Optional[Dict[str, Any]] = self._make_github_request(url, "PATCH", {"body": markdown})
 
         if response:
             print("Progress comment updated")
@@ -261,4 +253,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

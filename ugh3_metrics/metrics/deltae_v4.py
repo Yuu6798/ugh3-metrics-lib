@@ -21,6 +21,7 @@ class DeltaEV4(BaseMetric):
 
                 embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:
+
                 class SimpleEmbedder:
                     def encode(self, text: str) -> Any:
                         return [float(len(text.split()))]

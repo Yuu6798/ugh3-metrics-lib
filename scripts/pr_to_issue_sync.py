@@ -87,8 +87,9 @@ def main() -> None:
 
     base_url = f"https://api.github.com/repos/{repo}/issues/{issue_number}"
     comment_body = (
-        f"PR #{pr_number} merged. Closing linked issue." if pr_merged else
-        f"PR #{pr_number} closed without merge. Issue remains open."
+        f"PR #{pr_number} merged. Closing linked issue."
+        if pr_merged
+        else f"PR #{pr_number} closed without merge. Issue remains open."
     )
 
     # Post comment to issue
@@ -100,14 +101,17 @@ def main() -> None:
 
     # Update progress tracker (task index 7)
     try:
-        subprocess.run([
-            sys.executable,
-            "scripts/progress_tracker.py",
-            str(issue_number),
-            "complete",
-            "7",
-            str(pr_merged).lower(),
-        ], check=False)
+        subprocess.run(
+            [
+                sys.executable,
+                "scripts/progress_tracker.py",
+                str(issue_number),
+                "complete",
+                "7",
+                str(pr_merged).lower(),
+            ],
+            check=False,
+        )
     except Exception as exc:  # pragma: no cover - defensive
         print(f"Progress tracker update failed: {exc}")
 

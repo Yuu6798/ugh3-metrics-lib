@@ -14,6 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover
             "対応バージョンをインストールするか、import ロジックを更新してください。"
         ) from exc
 
+
 def download_models(models: List[str]) -> None:
     for model in models:
         print(f"Downloading {model} ...")

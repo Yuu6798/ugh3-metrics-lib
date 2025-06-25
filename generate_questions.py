@@ -31,6 +31,7 @@ TEMPLATES = [
     "Discuss {topic} with respect to {category}.",
 ]
 
+
 def make_question() -> str:
     """Return a single random question string."""
     cat = random.choice(CATEGORIES)
