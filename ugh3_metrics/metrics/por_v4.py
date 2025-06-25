@@ -28,8 +28,22 @@ class PorV4(BaseMetric):
                 embedder = SimpleEmbedder()
         self._embedder = embedder
 
-    def score(self, a: str, b: str) -> float:
+    def score(
+        self,
+        a: str,
+        b: Any,
+        *,
+        params: dict[str, float] | None = None,
+    ) -> float:
         """Return PoR probability from text similarity."""
+        if isinstance(b, list):
+            try:
+                b = b[-1].question if b else ""
+            except Exception:
+                b = ""
+        elif not isinstance(b, str):
+            b = str(b)
+        _ = params
         if not a:
             return 0.0
         v1 = self._embedder.encode(a)
