@@ -16,7 +16,7 @@ code = 'def download_model(name):\n    pass\n'
 
 sys.path.insert(0, str(FAKE_DIR))
 
-import warm_cache
+import warm_cache  # noqa: E402
 
 
 def test_cli_help() -> None:

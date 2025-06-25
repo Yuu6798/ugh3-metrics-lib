@@ -13,19 +13,19 @@ from __future__ import annotations
 
 import argparse
 import csv
-import time
 import itertools
-import random
-from dataclasses import dataclass, asdict, field
-
-from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional
 import os
+import random
 import sys
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from facade.trigger import por_trigger
+from ugh3_metrics.metrics import DeltaEV4, GrvV4, PorV4
 
 _EMBEDDER: Any | None = None
-
-from ugh3_metrics.metrics import PorV4, DeltaEV4, GrvV4
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -34,8 +34,6 @@ try:
         STOPWORDS.update(word.strip() for word in sfh if word.strip())
 except Exception:  # pragma: no cover - optional dependency
     pass
-
-from facade.trigger import por_trigger
 
 DOMAINS: list[str] = ["general", "creative", "technical", "specialized"]
 DIFFICULTIES: list[int] = [1, 2, 3, 4, 5]

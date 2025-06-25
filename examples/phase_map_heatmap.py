@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Generate a simple phase map heatmap for PoR scores.
 
 This script creates a dummy history of timestamped PoR scores and
 plots them using ``matplotlib.imshow``. The resulting image is saved to
 ``images/phase_map.png`` for inclusion in the project README.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 import argparse

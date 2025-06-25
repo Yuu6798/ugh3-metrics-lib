@@ -1,4 +1,6 @@
 import matplotlib
+from pathlib import Path
+
 matplotlib.use('Agg')
 
 def test_import_example_modules() -> None:
@@ -6,9 +8,6 @@ def test_import_example_modules() -> None:
     import facade.collector
     import secl.qa_cycle
     import core.history
-
-
-from pathlib import Path
 
 
 def test_scripts_run(tmp_path: Path) -> None:
