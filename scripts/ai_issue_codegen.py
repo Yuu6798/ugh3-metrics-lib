@@ -289,7 +289,7 @@ def main() -> None:
     # Test mode with predefined diff
     if args.test:
         diff_text = DEFAULT_DIFF
-        print(f"[debug] test mode: using predefined diff")
+        print("[debug] test mode: using predefined diff")
         print(diff_text)
         print("[debug] Using Claude Code method: direct file editing")
         try:
@@ -333,7 +333,7 @@ def main() -> None:
         generated_output = llm(issue_body, model)
 
         print(f"[DEBUG] LLM response length: {len(generated_output)}")
-        print(f"[DEBUG] LLM response preview:")
+        print("[DEBUG] LLM response preview:")
         print(generated_output[:500] + "..." if len(generated_output) > 500 else generated_output)
 
         if not generated_output or not generated_output.strip():
