@@ -17,21 +17,15 @@ import time
 import itertools
 import random
 from dataclasses import dataclass, asdict, field
-from difflib import SequenceMatcher
-from math import log1p
+
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
 import os
 import sys
 
-try:
-    from sentence_transformers import SentenceTransformer
-    import numpy as np
-    _EMBEDDER: Optional[SentenceTransformer] = None
-except Exception:  # pragma: no cover - optional dependency may not be present
-    _EMBEDDER = None
+_EMBEDDER: Any | None = None
 
-from utils.config_loader import MAX_VOCAB_CAP
+from ugh3_metrics.metrics import PorV4, DeltaEV4, GrvV4
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -56,15 +50,27 @@ def stratified_pairs(n: int) -> list[tuple[str, int]]:
     return pairs
 
 
-def _load_embedder() -> SentenceTransformer:
-    """Lazy-load shared SentenceTransformer instance.
+def _load_embedder() -> Any:
+    """Lazy-load shared embedding model with fallback."""
 
-    Guarantees a concrete SentenceTransformer is returned.
-    """
     global _EMBEDDER
     if _EMBEDDER is None:
-        _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
+        except Exception:
+            class SimpleEmbedder:
+                def encode(self, text: str) -> list[float]:
+                    return [float(len(text.split()))]
+
+            _EMBEDDER = SimpleEmbedder()
     return _EMBEDDER
+
+# --- metric singletons ----------------------------------------------------
+_POR = PorV4()                              # PoR v4
+_DE  = DeltaEV4(embedder=_load_embedder())  # DeltaEV4 v4
+_GRV = GrvV4()                              # grv v4
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -249,11 +255,6 @@ def get_ai_response(question: str, provider: str | None = None) -> str:
     return f"未対応のAI_PROVIDER '{prov}' が指定されました。"
 
 
-def _similarity(text1: str, text2: str) -> float:
-    """Return a similarity ratio between two strings."""
-    return SequenceMatcher(None, text1, text2).ratio()
-
-
 def generate_next_question(
     prev_answer: str,
     history: List["HistoryEntry"],
@@ -301,75 +302,23 @@ def estimate_ugh_params(question: str, history: List["HistoryEntry"]) -> Dict[st
     D = min(0.5, 0.1 + 0.02 * h_len)
     return {"q": q, "s": s, "t": t, "phi_C": phi_C, "D": D}
 
-def hybrid_por_score(
-    params: Dict[str, float],
-    question: str,
-    history: List["HistoryEntry"],
-    *,
-    w1: float | None = None,
-    w2: float | None = None,
-) -> float:
-    """Return PoR score based on UGHer model and semantic similarity."""
-    if w1 is None:
-        w1 = POR_W1
-    if w2 is None:
-        w2 = POR_W2
-    trig = por_trigger(params["q"], params["s"], params["t"], params["phi_C"], params["D"])
-    por_model = trig["score"] * (1 - params["D"])
-    if history:
-        max_sim = max(_similarity(question, h.question) for h in history)
-        por_sim = 1.0 - max_sim
-    else:
-        por_sim = 1.0
-    return round(w1 * por_model + w2 * por_sim, 3)
+
+def por_score(question: str, hist: list["HistoryEntry"]) -> float:
+    """Return PoR score via the v4 metric."""
+    ref = hist[-1].question if hist else ""
+    return float(_POR.score(question, ref))
 
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
-    """Return ΔE based on embedding cosine distance.
-
-    When the embedding model cannot be loaded, a simple length based
-    difference is used as a fallback.
-    """
-    if prev_answer is None:
-        return 0.0
-    if _EMBEDDER is None:
-        try:
-            _load_embedder()
-        except Exception:
-            pass
-    if _EMBEDDER is not None:
-        try:
-            v1 = _EMBEDDER.encode(prev_answer)
-            v2 = _EMBEDDER.encode(curr_answer)
-            num = float(np.dot(v1, v2))
-            denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-            if denom == 0:
-                raise ValueError("zero norm")
-            cos_sim = num / denom
-            diff = max(0.0, 1.0 - cos_sim)
-            return round(min(1.0, diff), 3)
-        except Exception:
-            pass
-    diff = min(1.0, abs(len(prev_answer) - len(curr_answer)) / 50.0)
-    return round(diff, 3)
+    """Return ΔE score via the v4 metric."""
+    return float(_DE.score(prev_answer or "", curr_answer))
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
-    """Return log-scaled grv based on vocabulary size.
+    """Return grv score via the v4 metric."""
+    _ = mode
+    return float(_GRV.score(answer, ""))
 
-    Stopwords listed in ``data/jp_stop.txt`` are ignored.  The score is
-    computed as ``log(1+|V|) / log(1+cap)`` where ``cap`` is the dynamic
-    vocabulary limit ``MAX_VOCAB_CAP`` from :mod:`utils.config_loader`.
-    """
-    if isinstance(answer, str):
-        tokens = [t for t in answer.split() if t not in STOPWORDS]
-    else:
-        tokens = [t for t in answer if t not in STOPWORDS]
-    vocab = set(tokens)
-    score = 0.0
-    if vocab:
-        score = log1p(len(vocab)) / log1p(MAX_VOCAB_CAP)
-    return round(min(1.0, score), 3)
 
 
 def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float, bool]:
@@ -459,7 +408,7 @@ def run_cycle(
 
         answer = get_ai_response(question, provider=provider)
         params = estimate_ugh_params(question, history)
-        por = hybrid_por_score(params, question, history)
+        por = por_score(question, history)
         de = delta_e(prev_answer, answer)
         grv = grv_score(answer, mode=grv_mode)
 
