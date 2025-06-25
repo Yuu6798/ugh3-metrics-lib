@@ -7,6 +7,6 @@ ignore = [
   "F401",
   "E402",
   "E501",
-  "E401",
-  "F841"
+  "E401"
+  # F841 removed to enable unused variable detection
 ]

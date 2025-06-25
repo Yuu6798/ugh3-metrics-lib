@@ -22,11 +22,6 @@ PATTERNS = {
 
 def github_api_request(url: str, token: str) -> Optional[Dict[str, Any]]:
     """Send a GET request to the GitHub API and return JSON data."""
-    headers = {
-        "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "ai-review-response",
-    }
     try:
         req = subprocess.run(
             ["curl", "-s", "-H", f"Authorization: token {token}", url],
