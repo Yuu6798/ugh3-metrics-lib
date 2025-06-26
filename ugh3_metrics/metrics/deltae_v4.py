@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+import warnings
 import numpy as np
+from difflib import SequenceMatcher
 from typing import Any
 
 from ..models.embedder import EmbedderProtocol
 from .base import BaseMetric
-from ..utils import cosine_similarity
+
 
 
 class DeltaEV4(BaseMetric):
@@ -23,22 +26,28 @@ class DeltaEV4(BaseMetric):
             except Exception:
 
                 class SimpleEmbedder:
-                    def encode(self, text: str) -> Any:
-                        return [float(len(text.split()))]
+                    """Fallback embedder: non-zero 32-D int16 vector via MD5."""
+
+                    _table = np.arange(0, 256, dtype=np.int16)
+
+                    def encode(self, text: str, **_: Any) -> np.ndarray:  # noqa: D401
+                        md5 = hashlib.md5(text.encode()).digest()
+                        v = self._table[np.frombuffer(md5, dtype=np.uint8)]
+                        return np.concatenate([v, v])
 
                 embedder = SimpleEmbedder()
         self._embedder = embedder
 
-    def score(self, a: str, b: str) -> float:
-        """Return standardized cosine difference clipped to [0, 1]."""
-        if not a:
-            return 0.0
-        v1 = self._embedder.encode(a)
-        v2 = self._embedder.encode(b)
-        sim = cosine_similarity(v1, v2)
-        diff = 1.0 - sim
-        z = (diff - self.DEFAULT_MU) / self.DEFAULT_SIGMA if self.DEFAULT_SIGMA else diff - self.DEFAULT_MU
-        return float(np.clip(z, 0.0, 1.0))
+    def score(self, prev: str, curr: str) -> float:  # noqa: D401
+        v1 = np.asarray(self._embedder.encode(prev), dtype=float)
+        v2 = np.asarray(self._embedder.encode(curr), dtype=float)
+        if not np.any(v1) or not np.any(v2):
+            warnings.warn("zero\u2011vector; diff_sim fallback", RuntimeWarning)
+            sim = SequenceMatcher(None, prev, curr).ratio()
+            return round(1.0 - sim, 3)
+        denom = float(np.linalg.norm(v1) * np.linalg.norm(v2))
+        cos = float(np.dot(v1, v2)) / denom
+        return round(max(0.0, 1.0 - cos), 3)
 
     def set_params(self, **kw: object) -> None:  # pragma: no cover - placeholder
         pass
