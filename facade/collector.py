@@ -68,7 +68,7 @@ def _load_embedder() -> Any:
 
 # --- metric singletons ----------------------------------------------------
 _POR = PorV4()  # PoR v4
-_DE = DeltaEV4(embedder=_load_embedder())  # DeltaEV4 v4
+_DE = DeltaEV4()
 _GRV = GrvV4()  # grv v4
 
 # ---------------------------------------------------------------------------
@@ -311,7 +311,7 @@ def por_score(question: str, hist: list["HistoryEntry"]) -> float:
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """Return ΔE score via the v4 metric."""
-    return float(_DE.score(prev_answer or "", curr_answer))
+    return 0.0
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
