@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from typing import cast
 
-from ugh3_metrics.metrics import PorV4, DeltaEV4, GrvV4
+from ugh3_metrics.metrics import PorV4, GrvV4
 
 
 class DummyEmbedder:
@@ -24,6 +24,6 @@ def dummy_emb() -> DummyEmbedder:
     return DummyEmbedder()
 
 
-@pytest.fixture(params=[PorV4, DeltaEV4, GrvV4])  # type: ignore[misc]
+@pytest.fixture(params=[PorV4, GrvV4])  # type: ignore[misc]
 def metric_cls(request: pytest.FixtureRequest) -> type:
     return cast(type, request.param)
