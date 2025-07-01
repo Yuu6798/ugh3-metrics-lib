@@ -108,6 +108,12 @@ from core.grv import grv_score
 
 <!-- AUTO SECTION END -->
 
+### Reference Metrics
+PorV4, DeltaEV4, GrvV4, and SciV4 are provided as reference implementations
+under `ugh3_metrics.metrics`. Integration tests in `tests/` cover these
+modules; `tests/test_deltae_v4_setparams.py` verifies `DeltaEV4` using a dummy
+embedder.
+
 ### Visualization Utilities / 可視化用ユーティリティ
 
 `phase_map_heatmap.py` ではメトリクス履歴をヒートマップとして描画します。

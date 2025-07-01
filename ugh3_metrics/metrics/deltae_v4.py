@@ -2,6 +2,8 @@ from typing import Protocol
 
 import hashlib
 import numpy as np
+import warnings
+from difflib import SequenceMatcher
 
 
 class _EmbedderProto(Protocol):
@@ -10,7 +12,11 @@ class _EmbedderProto(Protocol):
 
 
 class DeltaEV4:  # noqa: D101
-    """Stub metric: length+hash 2‐D コサイン距離を返す暫定実装."""
+    """Return a simple length+hash cosine distance.
+
+    Falls back to :class:`difflib.SequenceMatcher` when either embedding is
+    the zero vector.
+    """
 
     _embedder: _EmbedderProto | None = None  # set_params で動的に上書き
 
@@ -24,9 +30,14 @@ class DeltaEV4:  # noqa: D101
             h2 = int.from_bytes(hashlib.md5(b.encode()).digest()[:4], "big")
             v1 = np.asarray([len(a), h1], dtype=float)
             v2 = np.asarray([len(b), h2], dtype=float)
-        # どちらかがゼロベクトルの場合は距離を 1.0 とする
+        # どちらかがゼロベクトルなら difflib.SequenceMatcher による
+        # 文字列類似度へフォールバックする
         if not np.linalg.norm(v1) or not np.linalg.norm(v2):
-            return 1.0
+            warnings.warn(
+                "zero\u2011vector detected; using diff.sim fallback",
+                RuntimeWarning,
+            )
+            return round(1.0 - SequenceMatcher(None, a, b).ratio(), 3)
         if np.allclose(v1, v2):
             return 0.0
         cos = float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
