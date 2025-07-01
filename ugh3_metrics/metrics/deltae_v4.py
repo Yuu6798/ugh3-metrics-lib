@@ -1,15 +1,27 @@
-from typing import Protocol, runtime_checkable, Optional, Any
+# ------------------------------------------------------------
+# 型チェック専用インポート
+# ------------------------------------------------------------
+from typing import (
+    Protocol,
+    runtime_checkable,
+    Optional,
+    Any,
+    TYPE_CHECKING,
+    cast,
+)
 
 import hashlib
 import numpy as np
 import warnings
 from difflib import SequenceMatcher
 
-try:
-    from sentence_transformers import SentenceTransformer
-except Exception:
-    SentenceTransformer: Optional[Any]
-    SentenceTransformer = None
+# ------------------------------------------------------------
+# SentenceTransformer ― 実行時に import 失敗しても型だけ残す
+# ------------------------------------------------------------
+if TYPE_CHECKING:                 # typing 時のみ解決
+    from sentence_transformers import SentenceTransformer  # pragma: no cover
+else:                             # 実行時
+    SentenceTransformer = cast(Optional[Any], None)        # type: ignore[assignment]
 
 
 @runtime_checkable
@@ -25,7 +37,7 @@ class DeltaEV4:  # noqa: D101
     the zero vector.
     """
 
-    _embedder: _EmbedderProto | None = None  # lazy-loaded or set_params
+    _embedder: _EmbedderProto | None = None  # set_params / lazy-load で上書き
 
     def score(self, a: str, b: str) -> float:  # noqa: D401
         """Return |len(a)-len(b)| 正規化値 (0-1)。"""
