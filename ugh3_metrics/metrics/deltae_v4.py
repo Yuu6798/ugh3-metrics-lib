@@ -1,5 +1,6 @@
 from typing import Protocol
 
+import hashlib
 import numpy as np
 
 
@@ -19,8 +20,10 @@ class DeltaEV4:  # noqa: D101
             v1 = np.asarray(self._embedder.encode(a), dtype=float)
             v2 = np.asarray(self._embedder.encode(b), dtype=float)
         else:
-            v1 = np.asarray([len(a), hash(a) % 13], dtype=float)
-            v2 = np.asarray([len(b), hash(b) % 13], dtype=float)
+            h1 = int.from_bytes(hashlib.md5(a.encode()).digest()[:4], "big")
+            h2 = int.from_bytes(hashlib.md5(b.encode()).digest()[:4], "big")
+            v1 = np.asarray([len(a), h1], dtype=float)
+            v2 = np.asarray([len(b), h2], dtype=float)
         # どちらかがゼロベクトルの場合は距離を 1.0 とする
         if not np.linalg.norm(v1) or not np.linalg.norm(v2):
             return 1.0
