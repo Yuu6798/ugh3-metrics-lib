@@ -1,4 +1,4 @@
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable, Optional, Any
 
 import hashlib
 import numpy as np
@@ -7,8 +7,9 @@ from difflib import SequenceMatcher
 
 try:
     from sentence_transformers import SentenceTransformer
-except Exception:  # pragma: no cover – import may fail in CI
-    SentenceTransformer = None  # type: ignore[assignment]
+except Exception:
+    SentenceTransformer: Optional[Any]
+    SentenceTransformer = None
 
 
 @runtime_checkable
