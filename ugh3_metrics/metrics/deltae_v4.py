@@ -1,11 +1,30 @@
-from typing import Protocol
+# ------------------------------------------------------------
+# 型チェック専用インポート
+# ------------------------------------------------------------
+from typing import (
+    Protocol,
+    runtime_checkable,
+    Optional,
+    Any,
+    TYPE_CHECKING,
+    cast,
+)
 
 import hashlib
 import numpy as np
 import warnings
 from difflib import SequenceMatcher
 
+# ------------------------------------------------------------
+# SentenceTransformer ― 実行時に import 失敗しても型だけ残す
+# ------------------------------------------------------------
+if TYPE_CHECKING:                 # typing 時のみ解決
+    from sentence_transformers import SentenceTransformer  # pragma: no cover
+else:                             # 実行時
+    SentenceTransformer = cast(Optional[Any], None)        # type: ignore[assignment]
 
+
+@runtime_checkable
 class _EmbedderProto(Protocol):
     def encode(self, text: str) -> list[float]:
         """Return an embedding for the given text."""
@@ -18,10 +37,18 @@ class DeltaEV4:  # noqa: D101
     the zero vector.
     """
 
-    _embedder: _EmbedderProto | None = None  # set_params で動的に上書き
+    _embedder: _EmbedderProto | None = None  # set_params / lazy-load で上書き
 
     def score(self, a: str, b: str) -> float:  # noqa: D401
         """Return |len(a)-len(b)| 正規化値 (0-1)。"""
+        # --- lazy-load 実エンベッダー --------------------------
+        if self._embedder is None and SentenceTransformer is not None:
+            try:
+                self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
+            except Exception:  # pragma: no cover – network-less CI
+                pass
+
+        # --- ベクトルを取得 ------------------------------------
         if self._embedder is not None:
             v1 = np.asarray(self._embedder.encode(a), dtype=float)
             v2 = np.asarray(self._embedder.encode(b), dtype=float)
