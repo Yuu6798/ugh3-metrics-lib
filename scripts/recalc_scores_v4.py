@@ -16,6 +16,9 @@ import argparse
 from pathlib import Path
 import pandas as pd  # type: ignore[import-not-found]
 
+from tqdm import tqdm
+from joblib import Parallel, delayed
+
 from ugh3_metrics.metrics.deltae_v4 import DeltaEV4
 from ugh3_metrics.metrics.por_v4 import PorV4
 
@@ -48,9 +51,20 @@ def main() -> None:
     de = DeltaEV4(auto_load=True)
     pv = PorV4(auto_load=True)
 
-    df["por_a"] = [pv.score(q, a) for q, a in zip(df["question"], df["answer_a"])]
-    df["por_b"] = [pv.score(q, b) for q, b in zip(df["question"], df["answer_b"])]
-    df["delta_e"] = [de.score(a, b) for a, b in zip(df["answer_a"], df["answer_b"])]
+    def _score_row(q: str, a1: str, a2: str) -> tuple[float, float, float]:
+        """Return PoR for both answers and ΔE between them."""
+        return pv.score(q, a1), pv.score(q, a2), de.score(a1, a2)
+
+    results = Parallel(n_jobs=-1, prefer="threads")(
+        delayed(_score_row)(q, a1, a2)
+        for q, a1, a2 in tqdm(
+            zip(df["question"], df["answer_a"], df["answer_b"]),
+            total=len(df),
+            desc="Scoring",
+        )
+    )
+
+    df["por_a"], df["por_b"], df["delta_e"] = map(list, zip(*results))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False)
