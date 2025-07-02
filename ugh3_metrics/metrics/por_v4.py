@@ -20,6 +20,7 @@ class PorV4(BaseMetric):
         embedder: EmbedderProtocol | None = None,
         auto_load: bool = False,
     ) -> None:
+        self._embedder: EmbedderProtocol | None = None
         if embedder is not None:
             self._embedder = embedder
         elif auto_load:
@@ -28,14 +29,10 @@ class PorV4(BaseMetric):
 
                 self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:
+                pass  # fall through to SimpleEmbedder
 
-                class SimpleEmbedder:
-                    def encode(self, text: str) -> Any:
-                        return [float(len(text.split()))]
-
-                self._embedder = SimpleEmbedder()
-        else:
-            class SimpleEmbedder:
+        if self._embedder is None:
+            class SimpleEmbedder:  # noqa: D401
                 def encode(self, text: str) -> Any:
                     return [float(len(text.split()))]
 
