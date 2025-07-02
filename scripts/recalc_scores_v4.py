@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import pandas as pd  # type: ignore[import-not-found]
+import pandas as pd
 
 from tqdm import tqdm
 from joblib import Parallel, delayed
