@@ -30,19 +30,61 @@ class _EmbedderProto(Protocol):
         """Return an embedding for the given text."""
 
 
-class DeltaEV4:  # noqa: D101
-    """Return a simple length+hash cosine distance.
+# --------------------------------------------------------------------------------
+# ΔE v4  ― MiniLM ベース (fallback 付き) コサイン距離
+# --------------------------------------------------------------------------------
 
-    Falls back to :class:`difflib.SequenceMatcher` when either embedding is
-    the zero vector.
+class DeltaEV4:  # noqa: D101
+    """ΔE v4 metric.
+
+    * 既定は MiniLM-L6 ベースの文ベクトル同士のコサイン距離 (0‑1)。
+    * MiniLM が import 不可／ネットワーク不可の場合は
+      - 長さ＋ハッシュ 2‑D コサイン
+      - さらにゼロベクトル時は ``difflib.SequenceMatcher`` 比
+      へ段階的にフォールバックする。
     """
 
     _embedder: _EmbedderProto | None = None  # set_params / lazy-load で上書き
 
+    # ------------------------------------------------------------------
+    # コンストラクタ
+    # ------------------------------------------------------------------
+    def __init__(
+        self,
+        *,
+        embedder: _EmbedderProto | None = None,
+        auto_load: bool = False,
+    ) -> None:  # noqa: D401
+        """Create a metric instance.
+
+        Parameters
+        ----------
+        embedder :
+            外部から埋め込み器を差し込む場合に指定する。
+        auto_load :
+            *True* なら可能な場合は `SentenceTransformer` を即座にロードする。
+            ネットワーク制限などで取得失敗しても例外は握りつぶす。
+        """
+        self._auto_load = auto_load
+        if embedder is not None:
+            self._embedder = embedder
+        elif auto_load and SentenceTransformer is not None:
+            try:
+                self._embedder = cast(
+                    _EmbedderProto,
+                    SentenceTransformer("all-MiniLM-L6-v2"),  # pragma: no mutate
+                )
+            except Exception:  # pragma: no cover – network-less CI
+                pass
+
     def score(self, a: str, b: str) -> float:  # noqa: D401
         """Return |len(a)-len(b)| 正規化値 (0-1)。"""
-        # --- lazy-load 実エンベッダー --------------------------
-        if self._embedder is None and SentenceTransformer is not None:
+        # --- lazy-load エンベッダー(__init__ で失敗した場合のみ) ----
+        if (
+            self._embedder is None
+            and self._auto_load
+            and SentenceTransformer is not None
+        ):
             try:
                 self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:  # pragma: no cover – network-less CI

@@ -14,20 +14,32 @@ class PorV4(BaseMetric):
     DEFAULT_ALPHA: float = 13.2
     DEFAULT_BETA: float = -10.8
 
-    def __init__(self, *, embedder: EmbedderProtocol | None = None) -> None:
-        if embedder is None:
+    def __init__(
+        self,
+        *,
+        embedder: EmbedderProtocol | None = None,
+        auto_load: bool = False,
+    ) -> None:
+        if embedder is not None:
+            self._embedder = embedder
+        elif auto_load:
             try:
                 from sentence_transformers import SentenceTransformer
 
-                embedder = SentenceTransformer("all-MiniLM-L6-v2")
+                self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:
 
                 class SimpleEmbedder:
                     def encode(self, text: str) -> Any:
                         return [float(len(text.split()))]
 
-                embedder = SimpleEmbedder()
-        self._embedder = embedder
+                self._embedder = SimpleEmbedder()
+        else:
+            class SimpleEmbedder:
+                def encode(self, text: str) -> Any:
+                    return [float(len(text.split()))]
+
+            self._embedder = SimpleEmbedder()
 
     def score(
         self,
