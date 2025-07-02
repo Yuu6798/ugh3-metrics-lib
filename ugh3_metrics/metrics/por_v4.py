@@ -14,20 +14,29 @@ class PorV4(BaseMetric):
     DEFAULT_ALPHA: float = 13.2
     DEFAULT_BETA: float = -10.8
 
-    def __init__(self, *, embedder: EmbedderProtocol | None = None) -> None:
-        if embedder is None:
+    def __init__(
+        self,
+        *,
+        embedder: EmbedderProtocol | None = None,
+        auto_load: bool = False,
+    ) -> None:
+        self._embedder: EmbedderProtocol | None = None
+        if embedder is not None:
+            self._embedder = embedder
+        elif auto_load:
             try:
                 from sentence_transformers import SentenceTransformer
 
-                embedder = SentenceTransformer("all-MiniLM-L6-v2")
+                self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:
+                pass  # fall through to SimpleEmbedder
 
-                class SimpleEmbedder:
-                    def encode(self, text: str) -> Any:
-                        return [float(len(text.split()))]
+        if self._embedder is None:
+            class SimpleEmbedder:  # noqa: D401
+                def encode(self, text: str) -> Any:
+                    return [float(len(text.split()))]
 
-                embedder = SimpleEmbedder()
-        self._embedder = embedder
+            self._embedder = SimpleEmbedder()
 
     def score(
         self,
@@ -47,6 +56,8 @@ class PorV4(BaseMetric):
         _ = params
         if not a:
             return 0.0
+        # mypy: ここで None でないことを保証
+        assert self._embedder is not None
         v1 = self._embedder.encode(a)
         v2 = self._embedder.encode(b)
         sim = cosine_similarity(v1, v2)
