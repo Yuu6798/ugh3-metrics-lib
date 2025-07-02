@@ -56,6 +56,8 @@ class PorV4(BaseMetric):
         _ = params
         if not a:
             return 0.0
+        # mypy: ここで None でないことを保証
+        assert self._embedder is not None
         v1 = self._embedder.encode(a)
         v2 = self._embedder.encode(b)
         sim = cosine_similarity(v1, v2)
