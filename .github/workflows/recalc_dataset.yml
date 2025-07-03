@@ -1,0 +1,35 @@
+name: Recalculate metrics
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - datasets/current.csv
+      - scripts/recalc_scores_v4.py
+
+jobs:
+  recalc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . pandas pyarrow
+      - name: Recalculate PoR/ΔE v4
+        env:
+          SENTENCE_TRANSFORMERS_HOME: ${{ github.workspace }}/.cache/st
+        run: |
+          python scripts/recalc_scores_v4.py \
+            --infile  datasets/current.csv \
+            --outfile datasets/current_recalc.parquet
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: recalculated-dataset
+          path: datasets/current_recalc.parquet
