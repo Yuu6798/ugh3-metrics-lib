@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt joblib
       - name: Scrape tech docs
         run: python scripts/scrape_docs.py --out tech.jsonl
       - name: Generate dialogs
