@@ -34,7 +34,7 @@ jobs:
           run_dir=$(ls -td runs/* 2>/dev/null | head -n 1 || true)
           echo "run_dir=$run_dir" >> "$GITHUB_OUTPUT"
       - name: Upload artifact
-        uses: actions/upload-artifact@v4  # migrated from v3
+        uses: actions/upload-artifact@v4
         if: steps.collect.outputs.run_dir != ''
         with:
           name: por_history

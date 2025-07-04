@@ -65,7 +65,7 @@ jobs:
           git push
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
       - name: Upload artifact
-        uses: actions/upload-artifact@v4  # migrated from v3
+        uses: actions/upload-artifact@v4
         with:
           name: dataset_today
           path: dataset/${{ steps.commit.outputs.date }}.jsonl
