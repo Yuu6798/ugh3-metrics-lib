@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt joblib
+          pip install -r requirements.txt
           # 追加: パッケージを editable でインストール
           pip install -e .
       - name: Scrape tech docs
