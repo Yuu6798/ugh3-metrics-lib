@@ -28,7 +28,7 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install -r requirements.txt joblib
+          pip install -r requirements.txt
           # 追加: パッケージを editable でインストール
           pip install -e .
       - name: Warm cache – COMET-Kiwi
