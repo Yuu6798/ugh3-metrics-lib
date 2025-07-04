@@ -20,7 +20,8 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          python -m pip install . pandas pyarrow tqdm joblib
+          # 追加: パッケージを editable でインストール
+          python -m pip install -e . pandas pyarrow tqdm joblib
       - name: Recalculate PoR/ΔE v4
         env:
           SENTENCE_TRANSFORMERS_HOME: ${{ github.workspace }}/.cache/st
