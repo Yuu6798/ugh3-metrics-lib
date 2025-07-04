@@ -225,6 +225,11 @@ python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai
 ## Contribution / コントリビュート
 改善提案やバグ報告はPull RequestまたはIssueでお願いします。
 
+## Maintainers
+This project is primarily maintained by [Yuu6798](https://github.com/Yuu6798).
+Maintainers should set the `ST_CACHE` environment variable to a persistent
+cache directory to avoid re-downloading models during CI runs.
+
 ## License / ライセンス
 MIT License
 

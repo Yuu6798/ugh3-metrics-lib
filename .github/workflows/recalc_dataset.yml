@@ -24,6 +24,8 @@ jobs:
           pip install -e .
       - name: Recalculate PoR/ΔE v4
         env:
+          PYTHONPATH: ${{ github.workspace }}
+          ST_CACHE: ${{ github.workspace }}/.cache/st
           SENTENCE_TRANSFORMERS_HOME: ${{ github.workspace }}/.cache/st
         run: |
           python scripts/recalc_scores_v4.py \
