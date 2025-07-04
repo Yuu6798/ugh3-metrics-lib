@@ -67,7 +67,7 @@ jobs:
             --input daily_scored.csv --report-dir "$REPORT_DIR"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # migrated from v3
         with:
           name: por_dataset_${{ github.run_number }}
           path: |
