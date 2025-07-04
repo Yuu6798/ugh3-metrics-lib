@@ -35,9 +35,10 @@ jobs:
       - name: Scrape tech docs
         run: python scripts/scrape_docs.py --out tech.jsonl
       - name: Generate dialogs
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PYTHONPATH: ${{ github.workspace }}
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        ST_CACHE: ${{ github.workspace }}/.cache/st
+        PYTHONPATH: ${{ github.workspace }}
         run: |
           # 1) Q&A 生成 → dialogs.csv を runs/<exp_id>/ に保存
           python facade/collector.py --auto -n 50 \

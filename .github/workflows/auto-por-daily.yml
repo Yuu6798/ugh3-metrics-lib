@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 60   # BLEURT モデルDLの余裕確保
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ST_CACHE: ${{ github.workspace }}/.cache/st
       # ルートを PYTHONPATH に追加して utils パッケージを解決
       PYTHONPATH: ${{ github.workspace }}
     steps:
