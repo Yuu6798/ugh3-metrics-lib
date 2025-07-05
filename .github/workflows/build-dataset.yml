@@ -55,7 +55,13 @@ jobs:
       - name: Merge dataset
         run: |
           python scripts/merge_to_dataset.py tech_tagged.jsonl dialogs_tagged.jsonl daily.jsonl
-      - name: Commit dataset
+      - name: Upload current.csv as artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-dataset-csv
+          path: datasets/current.csv
+
+      - name: Commit dataset      #  ← 既存のコミットステップは下にずらす
         id: commit
         run: |
           DATE=$(date +%Y%m%d)

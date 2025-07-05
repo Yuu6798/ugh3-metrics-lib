@@ -22,6 +22,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
+      - name: Download dataset artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: current-dataset-csv
+          path: datasets           # artefact 内の current.csv がここに展開される
+
       - name: Recalculate PoR/ΔE v4
         env:
           PYTHONPATH: ${{ github.workspace }}
