@@ -79,3 +79,43 @@ jobs:
           name: dataset_today
           path: dataset/${{ steps.commit.outputs.date }}.jsonl
           retention-days: 30
+
+  #----------------------------------------------
+  # 追加：再計算 Job  (build が終わってから走る)
+  #----------------------------------------------
+  recalc:
+    needs: build                     # ← artefact を受け取るため依存させる
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      ST_CACHE:   ${{ github.workspace }}/.cache/st
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Download dataset artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: current-dataset-csv     # ← build Job で付けた名前
+          path: datasets                # datasets/current.csv が展開される
+
+      - name: Recalculate PoR/ΔE v4
+        run: |
+          python scripts/recalc_scores_v4.py \
+            --infile  datasets/current.csv \
+            --outfile datasets/current_recalc.parquet
+
+      - name: Upload recalculated dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: recalculated-dataset
+          path: datasets/current_recalc.parquet
