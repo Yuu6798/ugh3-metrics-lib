@@ -2,11 +2,6 @@ name: Recalculate metrics
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
-    paths:
-      - datasets/current.csv
-      - scripts/recalc_scores_v4.py
 
 jobs:
   recalc:
