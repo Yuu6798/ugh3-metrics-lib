@@ -61,18 +61,35 @@ jobs:
           name: current-dataset-csv
           path: datasets/current.csv
 
-      - name: Commit dataset      #  ← 既存のコミットステップは下にずらす
+      - name: Commit dataset              # ⇦ 置き換え
         id: commit
         run: |
+          set -e
           DATE=$(date +%Y%m%d)
           mkdir -p dataset
           cp daily.jsonl dataset/$DATE.jsonl
-          git config --global user.name 'github-actions[bot]'
+
+          git config --global user.name  'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # --- pull 最新 main (自ブランチ) を反映 -----------------------------
+          # 自分の変更を一時退避してからリベースで取り込む
+          git pull --rebase --autostash origin main
+
           git add dataset/$DATE.jsonl
-          git commit -m "Add dataset for $DATE" || echo "No changes"
-          git push
+          if git diff --cached --quiet; then
+            echo "No dataset changes; skipping commit."
+            echo "date=$DATE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "Add dataset for $DATE"
+          git push origin HEAD:main
+
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
+
+      # pull が競合等で失敗すると上記 set -e によりジョブは fail します
+      # その場合は手動で main を更新してから再実行してください
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
