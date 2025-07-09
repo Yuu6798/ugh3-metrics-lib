@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0         # 全履歴を取得して rebase が可能にする
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
