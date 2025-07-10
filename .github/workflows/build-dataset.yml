@@ -82,7 +82,11 @@ jobs:
 
           # --- pull 最新 main (自ブランチ) を反映 -----------------------------
           # 自分の変更を一時退避してからリベースで取り込む
-          git pull --rebase --autostash origin main
+          # ❶ push 競合を極力減らすため、まず fast‑forward
+          git pull --ff-only origin main || true     # 先に FF が効くなら最速で
+
+          # ❷ それでも競合する場合に備えて rebase 版も実行
+          git pull --rebase --autostash origin main || true
 
           git add dataset/$DATE.jsonl
           if git diff --cached --quiet; then
@@ -93,22 +97,22 @@ jobs:
 
           git commit -m "Add dataset for $DATE"
 
-          #########################################################
-          # B. push を最大 5 回リトライ
-          #########################################################
+          #######################################################################
+          # ❸ push を最大５回までリトライ（--force-with-lease で競合安全に上書き）
+          #######################################################################
           for i in 1 2 3 4 5; do
             echo ">>> push attempt #$i ..."
-            if git push origin HEAD:main; then
+            if git push --force-with-lease origin HEAD:main; then
               echo "Push succeeded."
               break
             fi
-            echo "Push rejected – rebasing onto latest origin/main"
+            echo "Push rejected – rebasing onto latest origin/main, retrying..."
             git pull --rebase --autostash origin main
+            sleep 4
             if [ "$i" = 5 ]; then
               echo "Push failed after 5 attempts, aborting."
               exit 1
             fi
-            sleep 4
           done
 
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
