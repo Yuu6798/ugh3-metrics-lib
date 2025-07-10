@@ -85,7 +85,14 @@ jobs:
           fi
 
           git commit -m "Add dataset for $DATE"
-          git push origin HEAD:main
+
+          # ---- push with a pull‑rebase guard ---------------------------------
+          # 1回目の push が拒否されたら pull --rebase して再 push
+          if ! git push origin HEAD:main; then
+            echo "Fast‑forward push rejected; rebasing onto origin/main..."
+            git pull --rebase --autostash origin main
+            git push origin HEAD:main
+          fi
 
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
