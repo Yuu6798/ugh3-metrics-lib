@@ -69,25 +69,24 @@ jobs:
           name: current-dataset-csv
           path: datasets/current.csv
 
-      - name: Commit dataset              # ⇦ 置き換え
+      - name: Commit dataset
         id: commit
         run: |
-          set -e
+          set -euo pipefail
+
           DATE=$(date +%Y%m%d)
           mkdir -p dataset
           cp daily.jsonl dataset/$DATE.jsonl
 
-          git config --global user.name  'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # --- pull 最新 main (自ブランチ) を反映 -----------------------------
-          # 自分の変更を一時退避してからリベースで取り込む
-          # ❶ push 競合を極力減らすため、まず fast‑forward
-          git pull --ff-only origin main || true     # 先に FF が効くなら最速で
-
-          # ❷ それでも競合する場合に備えて rebase 版も実行
+          ############################  pull 最新 main ############################
+          # まず fast‑forward で最速取得、競合したら rebase で解決
+          git pull --ff-only  origin main || true
           git pull --rebase --autostash origin main || true
 
+          ############################  変更が無ければスキップ  ####################
           git add dataset/$DATE.jsonl
           if git diff --cached --quiet; then
             echo "No dataset changes; skipping commit."
@@ -97,28 +96,25 @@ jobs:
 
           git commit -m "Add dataset for $DATE"
 
-          #######################################################################
-          # ❸ push を最大５回までリトライ（--force-with-lease で競合安全に上書き）
-          #######################################################################
-            # set -e を一時解除して「push 失敗→pull --rebase→sleep」を繰り返せるように
-            set +e
-            for i in 1 2 3 4 5; do
-              echo ">>> push attempt #$i ..."
-              git push --force-with-lease origin HEAD:main
-              if [ $? -eq 0 ]; then
-                echo "Push succeeded."
-                break
-              fi
-              echo "Push rejected – rebasing onto latest origin/main, retrying..."
-              git pull --rebase --autostash origin main
-              sleep 4
-              if [ "$i" = 5 ]; then
-                echo "Push failed after 5 attempts, aborting." >&2
-                set -e     # 元に戻す
-                exit 1
-              fi
-            done
-            set -e         # 安全のため再度有効化
+          ###########################  push を 5 回リトライ  #######################
+          set +e            # ← push 失敗を許容してループ
+          for i in 1 2 3 4 5; do
+            echo ">>> push attempt #$i ..."
+            git push --force-with-lease origin HEAD:main
+            if [ $? -eq 0 ]; then
+              echo "Push succeeded."
+              break
+            fi
+            echo "Push rejected – rebasing onto latest origin/main, retrying..."
+            git pull --rebase --autostash origin main
+            sleep 4
+            if [ "$i" = 5 ]; then
+              echo "Push failed after 5 attempts, aborting." >&2
+              set -e
+              exit 1
+            fi
+          done
+          set -e            # 安全のため再有効化
 
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
