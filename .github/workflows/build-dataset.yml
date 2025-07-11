@@ -4,8 +4,8 @@ name: Build Dataset
 # A. 同時実行を 1 本に制限
 ########################################
 concurrency:
-  group: build-dataset-main          # ← 任意のグループ名
-  cancel-in-progress: true           # 古い run をキャンセル
+  group: build-dataset-main      # 任意のグループ名
+  cancel-in-progress: true       # 古い run をキャンセル
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
         type: number
         default: 30
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 3 * * *'          # cron は必ずクオート
 
 jobs:
   build:
@@ -43,10 +43,10 @@ jobs:
       - name: Scrape tech docs
         run: python scripts/scrape_docs.py --out tech.jsonl
       - name: Generate dialogs
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        ST_CACHE: ${{ github.workspace }}/.cache/st
-        PYTHONPATH: ${{ github.workspace }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ST_CACHE: ${{ github.workspace }}/.cache/st
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           # 1) Q&A 生成 → dialogs.csv を runs/<exp_id>/ に保存
           python facade/collector.py --auto -n 50 \
@@ -71,7 +71,7 @@ jobs:
 
       - name: Commit dataset
         id: commit
-        run: |        # ← 2 スペース + “|”
+        run: |          # ← コロン + 半角スペース + パイプ
           set -euo pipefail
       
           DATE=$(date +%Y%m%d)
