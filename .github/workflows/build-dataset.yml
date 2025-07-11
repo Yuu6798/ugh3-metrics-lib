@@ -66,8 +66,8 @@ jobs:
       - name: Upload current.csv as artefact
         uses: actions/upload-artifact@v4
         with:
-          name: current-dataset-csv
-          path: datasets/current.csv
+          name: current-dataset-csv          # artefact 名は維持
+          path: current.csv                  # ファイル単体をアップロード
 
       - name: Commit dataset
         id: commit
