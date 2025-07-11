@@ -100,20 +100,25 @@ jobs:
           #######################################################################
           # ❸ push を最大５回までリトライ（--force-with-lease で競合安全に上書き）
           #######################################################################
-          for i in 1 2 3 4 5; do
-            echo ">>> push attempt #$i ..."
-            if git push --force-with-lease origin HEAD:main; then
-              echo "Push succeeded."
-              break
-            fi
-            echo "Push rejected – rebasing onto latest origin/main, retrying..."
-            git pull --rebase --autostash origin main
-            sleep 4
-            if [ "$i" = 5 ]; then
-              echo "Push failed after 5 attempts, aborting."
-              exit 1
-            fi
-          done
+            # set -e を一時解除して「push 失敗→pull --rebase→sleep」を繰り返せるように
+            set +e
+            for i in 1 2 3 4 5; do
+              echo ">>> push attempt #$i ..."
+              git push --force-with-lease origin HEAD:main
+              if [ $? -eq 0 ]; then
+                echo "Push succeeded."
+                break
+              fi
+              echo "Push rejected – rebasing onto latest origin/main, retrying..."
+              git pull --rebase --autostash origin main
+              sleep 4
+              if [ "$i" = 5 ]; then
+                echo "Push failed after 5 attempts, aborting." >&2
+                set -e     # 元に戻す
+                exit 1
+              fi
+            done
+            set -e         # 安全のため再度有効化
 
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
