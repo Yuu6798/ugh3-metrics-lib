@@ -1,42 +1,43 @@
-name: Auto Collect QA Logs
+name: Auto Collect
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
   workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'   # 6 時間おき
 
 jobs:
   collect:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Cache deps
-        uses: actions/cache@v4
-        with:
-          key: python-${{ hashFiles('requirements.txt') }}
-          path: |
-            ~/.cache/pip
-            ~/.cache/torch/sentence_transformers
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+
+      # ------- Run collector & export run_dir -------
       - name: Run collector
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        ST_CACHE: ${{ github.workspace }}/.cache/st
-        PYTHONPATH: ${{ github.workspace }}
         id: collect
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ST_CACHE:       ${{ github.workspace }}/.cache/st
+          PYTHONPATH:     ${{ github.workspace }}
         run: |
-          python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
-          run_dir=$(ls -td runs/* 2>/dev/null | head -n 1 || true)
+          set -e
+          python facade/collector.py \
+                 --auto -n 50 \
+                 --q-provider openai \
+                 --ai-provider openai \
+                 --quiet --summary
+
+          # 直近の runs ディレクトリを取得して GITHUB_OUTPUT に渡す
+          run_dir=$(ls -td runs/* | head -n 1 || true)
           echo "run_dir=$run_dir" >> "$GITHUB_OUTPUT"
-      - name: Upload artifact
+
+      # ------- Upload result artefact --------------
+      - name: Upload artefact
         uses: actions/upload-artifact@v4
-        if: steps.collect.outputs.run_dir != ''
         with:
           name: por_history
           path: ${{ steps.collect.outputs.run_dir }}/por_history.csv
