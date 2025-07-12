@@ -71,32 +71,32 @@ jobs:
 
       - name: Commit dataset
         id: commit
-        run: |          # ← コロン + 半角スペース + パイプ
+        run: |          # ← 必ず「コロン + 半角スペース + |」
           set -euo pipefail
-      
+
           DATE=$(date +%Y%m%d)
           mkdir -p dataset
           cp daily.jsonl dataset/$DATE.jsonl
-      
+
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      
-          # ==== 最新 main を取り込む（競合最小化）==============================
+
+          # --- 最新 main を取り込み、競合を最小化 ---
           git pull --ff-only  origin main || true
           git pull --rebase  --autostash origin main || true
-      
-          # ==== 変更が無ければスキップ =========================================
+
+          # --- 変更が無ければスキップ ---
           git add dataset/$DATE.jsonl
           if git diff --cached --quiet; then
             echo "No dataset changes; skipping commit."
             echo "date=$DATE" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-      
+
           git commit -m "Add dataset for $DATE"
-      
-          # ==== push を最大 5 回リトライ =======================================
-          set +e                       # push 失敗を許容
+
+          # --- push を最大 5 回リトライ (force-with-lease) ---
+          set +e
           for i in 1 2 3 4 5; do
             echo ">>> push attempt #$i ..."
             git push --force-with-lease origin HEAD:main
@@ -113,10 +113,9 @@ jobs:
               exit 1
             fi
           done
-          set -e                       # 安全のため再有効化
-      
-          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          set -e
 
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
       # pull が競合等で失敗すると上記 set -e によりジョブは fail します
       # その場合は手動で main を更新してから再実行してください
 
