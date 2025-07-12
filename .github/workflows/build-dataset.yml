@@ -63,6 +63,22 @@ jobs:
       - name: Merge dataset
         run: |
           python scripts/merge_to_dataset.py tech_tagged.jsonl dialogs_tagged.jsonl daily.jsonl
+      - name: Convert dataset to CSV   # ← 新規追加
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          import pathlib
+
+          src = pathlib.Path('daily.jsonl')
+          dst = pathlib.Path('current.csv')
+
+          if not src.exists():
+              raise SystemExit(f"[ERROR] {src} not found – earlier steps must create it")
+
+          df = pd.read_json(src, lines=True)
+          df.to_csv(dst, index=False)
+          print(f"[INFO] Wrote {dst}  (rows={len(df)})")
+          PY
       - name: Upload current.csv as artefact
         uses: actions/upload-artifact@v4
         with:
