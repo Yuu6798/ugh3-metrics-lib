@@ -36,7 +36,7 @@ def main() -> None:
 
     df = pd.read_csv(args.input)
 
-    candidates = df["answer"].astype(str).tolist()
+    candidates = df["answer_b"].astype(str).tolist()
     references = df["question"].astype(str).tolist()
 
     # BERTScore

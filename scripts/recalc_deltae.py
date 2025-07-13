@@ -37,9 +37,9 @@ def main() -> None:
 
     prev_answer: str | None = None
     for row in rows:
-        answer = row.get("answer", "")
-        row["delta_e_norm"] = f"{delta_e(prev_answer, answer):.3f}"
-        prev_answer = answer
+        answer_b = row.get("answer_b", "")
+        row["delta_e_norm"] = f"{delta_e(prev_answer, answer_b):.3f}"
+        prev_answer = answer_b
 
     with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
