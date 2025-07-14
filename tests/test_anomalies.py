@@ -8,9 +8,9 @@ from pathlib import Path
 from secl.qa_cycle import (
     check_metric_anomalies,
     detect_por_null,
-    HistoryEntry,
     backup_history,
 )
+from core.history_entry import HistoryEntry
 import json
 
 

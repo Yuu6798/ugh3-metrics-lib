@@ -265,13 +265,9 @@ def generate_next_question(
 ) -> str:
     """Return the next question using the specified LLM provider."""
     if provider == "template":
-        from typing import cast
-        from secl.qa_cycle import (
-            simulate_generate_next_question_from_answer,
-            HistoryEntry as SeHistoryEntry,
-        )
+        from secl.qa_cycle import simulate_generate_next_question_from_answer
 
-        q, _ = simulate_generate_next_question_from_answer(prev_answer, cast(List[SeHistoryEntry], history))
+        q, _ = simulate_generate_next_question_from_answer(prev_answer, history)
         return q
     prompt = (
         f"あなたは研究用データ収集AIです。ドメイン『{domain}』で難易度{difficulty}"
@@ -416,14 +412,14 @@ def run_cycle(
         if adopted:
             history.append(
                 HistoryEntry(
-                    question,
-                    prev_answer or "",
-                    answer,
-                    por,
-                    de,
-                    grv,
-                    domain,
-                    difficulty,
+                    question=question,
+                    answer_a=prev_answer or "",
+                    answer_b=answer,
+                    por=por,
+                    delta_e=de,
+                    grv=grv,
+                    domain=domain,
+                    difficulty=difficulty,
                 )
             )
             if jsonl_path is not None:
@@ -444,11 +440,22 @@ def run_cycle(
         executed += 1
 
     if history:
+        fields = [
+            "question",
+            "answer_a",
+            "answer_b",
+            "por",
+            "delta_e",
+            "grv",
+            "domain",
+            "difficulty",
+            "timestamp",
+        ]
         with open(output, "w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=list(asdict(history[0]).keys()))
+            writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             for rec in history:
-                writer.writerow(asdict(rec))
+                writer.writerow({f: getattr(rec, f) for f in fields})
 
     if summary:
         por_avg = sum(h.por for h in history) / len(history) if history else 0.0

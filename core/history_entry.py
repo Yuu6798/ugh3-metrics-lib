@@ -16,6 +16,14 @@ class HistoryEntry:
     grv: float
     domain: str
     difficulty: int
+    score: float = 0.0
+    spike: bool = False
+    external: bool = False
+    anomaly_por: bool = False
+    anomaly_delta_e: bool = False
+    anomaly_grv: bool = False
+    por_null: bool = False
+    score_threshold: float | None = None
     timestamp: float = field(default_factory=time.time)
 
 __all__ = ["HistoryEntry"]

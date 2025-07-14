@@ -26,6 +26,8 @@ from typing import List, Tuple, Dict, Any
 from utils.config_loader import CONFIG
 from core.history_entry import HistoryEntry
 
+__all__ = ["HistoryEntry"]
+
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
 DELTA_E_WINDOW: int = CONFIG.get("DELTA_E_WINDOW", 5)
