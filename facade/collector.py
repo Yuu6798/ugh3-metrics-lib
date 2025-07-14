@@ -18,11 +18,12 @@ import os
 import random
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from ugh3_metrics.metrics import DeltaEV4, GrvV4, PorV4
+from core.history_entry import HistoryEntry
 
 _EMBEDDER: Any | None = None
 
@@ -264,13 +265,9 @@ def generate_next_question(
 ) -> str:
     """Return the next question using the specified LLM provider."""
     if provider == "template":
-        from typing import cast
-        from secl.qa_cycle import (
-            simulate_generate_next_question_from_answer,
-            HistoryEntry as SeHistoryEntry,
-        )
+        from secl.qa_cycle import simulate_generate_next_question_from_answer
 
-        q, _ = simulate_generate_next_question_from_answer(prev_answer, cast(List[SeHistoryEntry], history))
+        q, _ = simulate_generate_next_question_from_answer(prev_answer, history)
         return q
     prompt = (
         f"あなたは研究用データ収集AIです。ドメイン『{domain}』で難易度{difficulty}"
@@ -331,18 +328,8 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class HistoryEntry:
-    question: str
-    answer: str
-    por: float
-    delta_e: float
-    grv: float
-    domain: str
-    difficulty: int
-    timestamp: float = field(default_factory=time.time)
-
-
+# ``HistoryEntry`` is imported from :mod:`core.history_entry` for reuse across
+# modules.
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -423,16 +410,37 @@ def run_cycle(
             print(f"【総合】{score:.3f} → {decision}")
 
         if adopted:
-            history.append(HistoryEntry(question, answer, por, de, grv, domain, difficulty))
+            history.append(
+                HistoryEntry(
+                    question=question,
+                    answer_a=prev_answer or "",
+                    answer_b=answer,
+                    por=por,
+                    delta_e=de,
+                    grv=grv,
+                    domain=domain,
+                    difficulty=difficulty,
+                )
+            )
             if jsonl_path is not None:
                 rec_dict = {
                     "question": question,
-                    "answer": answer,
+                    "answer_a": prev_answer or "",
+                    "answer_b": answer,
                     "por": por,
                     "delta_e": de,
                     "grv": grv,
                     "domain": domain,
                     "difficulty": difficulty,
+                    "timestamp": history[-1].timestamp,
+                    "score": history[-1].score,
+                    "spike": history[-1].spike,
+                    "external": history[-1].external,
+                    "anomaly_por": history[-1].anomaly_por,
+                    "anomaly_delta_e": history[-1].anomaly_delta_e,
+                    "anomaly_grv": history[-1].anomaly_grv,
+                    "por_null": history[-1].por_null,
+                    "score_threshold": history[-1].score_threshold,
                     "provider": provider,
                 }
                 with open(jsonl_path, "a", encoding="utf-8") as jfh:
@@ -441,11 +449,30 @@ def run_cycle(
         executed += 1
 
     if history:
+        fields = [
+            "question",
+            "answer_a",
+            "answer_b",
+            "por",
+            "delta_e",
+            "grv",
+            "domain",
+            "difficulty",
+            "timestamp",
+            "score",
+            "spike",
+            "external",
+            "anomaly_por",
+            "anomaly_delta_e",
+            "anomaly_grv",
+            "por_null",
+            "score_threshold",
+        ]
         with open(output, "w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=list(asdict(history[0]).keys()))
+            writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             for rec in history:
-                writer.writerow(asdict(rec))
+                writer.writerow({f: getattr(rec, f) for f in fields})
 
     if summary:
         por_avg = sum(h.por for h in history) / len(history) if history else 0.0
