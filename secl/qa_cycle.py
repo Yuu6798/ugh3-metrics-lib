@@ -174,10 +174,29 @@ def detect_spike(current_score: float, history_list: List[HistoryEntry]) -> bool
 def save_history_to_csv(path: Path, history_list: List[HistoryEntry]) -> None:
     try:
         with open(path, "w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=list(asdict(history_list[0]).keys()))
+            fields = [
+                "question",
+                "answer_a",
+                "answer_b",
+                "por",
+                "delta_e",
+                "grv",
+                "domain",
+                "difficulty",
+                "timestamp",
+                "score",
+                "spike",
+                "external",
+                "anomaly_por",
+                "anomaly_delta_e",
+                "anomaly_grv",
+                "por_null",
+                "score_threshold",
+            ]
+            writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             for entry in history_list:
-                writer.writerow(asdict(entry))
+                writer.writerow({f: getattr(entry, f) for f in fields})
     except Exception as exc:
         print(f"[Error] Failed to save history: {exc}")
 

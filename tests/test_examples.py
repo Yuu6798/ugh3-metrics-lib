@@ -56,5 +56,13 @@ def test_run_cycle_generates_csv(tmp_path: Path) -> None:
         "domain",
         "difficulty",
         "timestamp",
+        "score",
+        "spike",
+        "external",
+        "anomaly_por",
+        "anomaly_delta_e",
+        "anomaly_grv",
+        "por_null",
+        "score_threshold",
     ]
     assert 1 <= len(rows) <= steps

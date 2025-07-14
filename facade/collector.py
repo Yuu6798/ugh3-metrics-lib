@@ -432,6 +432,15 @@ def run_cycle(
                     "grv": grv,
                     "domain": domain,
                     "difficulty": difficulty,
+                    "timestamp": history[-1].timestamp,
+                    "score": history[-1].score,
+                    "spike": history[-1].spike,
+                    "external": history[-1].external,
+                    "anomaly_por": history[-1].anomaly_por,
+                    "anomaly_delta_e": history[-1].anomaly_delta_e,
+                    "anomaly_grv": history[-1].anomaly_grv,
+                    "por_null": history[-1].por_null,
+                    "score_threshold": history[-1].score_threshold,
                     "provider": provider,
                 }
                 with open(jsonl_path, "a", encoding="utf-8") as jfh:
@@ -450,6 +459,14 @@ def run_cycle(
             "domain",
             "difficulty",
             "timestamp",
+            "score",
+            "spike",
+            "external",
+            "anomaly_por",
+            "anomaly_delta_e",
+            "anomaly_grv",
+            "por_null",
+            "score_threshold",
         ]
         with open(output, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=fields)
