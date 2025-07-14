@@ -18,12 +18,13 @@ import csv
 import json
 import random
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 
 from utils.config_loader import CONFIG
+from core.history_entry import HistoryEntry
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
@@ -44,22 +45,6 @@ ALT_BACKUP_DIR: str = CONFIG.get("ALT_BACKUP_DIR", "backups_alt")
 BACKUP_INTERVAL: int = CONFIG.get("BACKUP_INTERVAL", 10)
 ALERT_POST_URL: str | None = CONFIG.get("ALERT_POST_URL")
 
-
-@dataclass
-class HistoryEntry:
-    question: str
-    answer: str
-    score: float
-    delta_e: float
-    grv: float
-    spike: bool
-    external: bool
-    anomaly_por: bool = False
-    anomaly_delta_e: bool = False
-    anomaly_grv: bool = False
-    por_null: bool = False
-    timestamp: float = field(default_factory=time.time)
-    score_threshold: float | None = None
 
 
 def novelty_score(question: str, history_list: List[HistoryEntry]) -> float:
@@ -111,7 +96,7 @@ def calc_grv_field(history_list: List[HistoryEntry], window: int = GRV_WINDOW) -
     vocab_set: set[str] = set()
     for entry in recent:
         vocab_set |= set(entry.question.split())
-        vocab_set |= set(entry.answer.split())
+        vocab_set |= set(entry.answer_b.split())
     grv = min(1.0, len(vocab_set) / 30.0)
     return round(grv, 3), vocab_set
 
@@ -309,19 +294,23 @@ def simulate_learn(
         return history_list
     if score >= score_threshold:
         entry = HistoryEntry(
-            question,
-            answer,
-            score,
-            delta_e,
-            grv,
-            spike_flag,
-            ext_flag,
-            anomaly_por=anomaly_flags[0],
-            anomaly_delta_e=anomaly_flags[1],
-            anomaly_grv=anomaly_flags[2],
-            por_null=por_null_flag,
-            score_threshold=score_threshold,
+            question=question,
+            answer_a=history_list[-1].answer_b if history_list else "",
+            answer_b=answer,
+            por=score,
+            delta_e=delta_e,
+            grv=grv,
+            domain="general",
+            difficulty=1,
         )
+        entry.score = score
+        entry.spike = spike_flag
+        entry.external = ext_flag
+        entry.anomaly_por = anomaly_flags[0]
+        entry.anomaly_delta_e = anomaly_flags[1]
+        entry.anomaly_grv = anomaly_flags[2]
+        entry.por_null = por_null_flag
+        entry.score_threshold = score_threshold
         updated = record_to_log(history_list, entry)
         print(f"  [採用] スコア {score:.2f} で履歴数: {len(updated)}")
         if spike_flag:
@@ -346,14 +335,18 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
         jump_cooldown = max(0, jump_cooldown - 1)
         answer = simulate_generate_answer(current_question)
         temp_entry = HistoryEntry(
-            current_question,
-            answer,
-            0,
-            0,
-            0,
-            False,
-            False,
+            question=current_question,
+            answer_a=history_list[-1].answer_b if history_list else "",
+            answer_b=answer,
+            por=0.0,
+            delta_e=0.0,
+            grv=0.0,
+            domain="general",
+            difficulty=1,
         )
+        temp_entry.score = 0.0
+        temp_entry.spike = False
+        temp_entry.external = False
         grv, vocab_set = calc_grv_field(history_list + [temp_entry])
         grv_history.append(grv)
         if step == 0:

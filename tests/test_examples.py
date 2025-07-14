@@ -48,7 +48,8 @@ def test_run_cycle_generates_csv(tmp_path: Path) -> None:
 
     assert header == [
         "question",
-        "answer",
+        "answer_a",
+        "answer_b",
         "por",
         "delta_e",
         "grv",

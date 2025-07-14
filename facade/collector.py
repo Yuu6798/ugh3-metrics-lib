@@ -18,11 +18,12 @@ import os
 import random
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from ugh3_metrics.metrics import DeltaEV4, GrvV4, PorV4
+from core.history_entry import HistoryEntry
 
 _EMBEDDER: Any | None = None
 
@@ -331,18 +332,8 @@ def evaluate_metrics(por: float, delta_e_val: float, grv: float) -> Tuple[float,
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class HistoryEntry:
-    question: str
-    answer: str
-    por: float
-    delta_e: float
-    grv: float
-    domain: str
-    difficulty: int
-    timestamp: float = field(default_factory=time.time)
-
-
+# ``HistoryEntry`` is imported from :mod:`core.history_entry` for reuse across
+# modules.
 # --- 互換エイリアス ------------
 QARecord = HistoryEntry
 # --------------------------------
@@ -423,11 +414,23 @@ def run_cycle(
             print(f"【総合】{score:.3f} → {decision}")
 
         if adopted:
-            history.append(HistoryEntry(question, answer, por, de, grv, domain, difficulty))
+            history.append(
+                HistoryEntry(
+                    question,
+                    prev_answer or "",
+                    answer,
+                    por,
+                    de,
+                    grv,
+                    domain,
+                    difficulty,
+                )
+            )
             if jsonl_path is not None:
                 rec_dict = {
                     "question": question,
-                    "answer": answer,
+                    "answer_a": prev_answer or "",
+                    "answer_b": answer,
                     "por": por,
                     "delta_e": de,
                     "grv": grv,

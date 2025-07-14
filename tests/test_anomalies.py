@@ -27,7 +27,18 @@ class TestAnomalies(unittest.TestCase):
         self.assertFalse(detect_por_null("q", "ans", 1.0, 0.5))
 
     def test_backup_history(self) -> None:
-        hist = [HistoryEntry("q", "a", 0.1, 0.2, 0.3, False, False)]
+        hist = [
+            HistoryEntry(
+                question="q",
+                answer_a="",
+                answer_b="a",
+                por=0.1,
+                delta_e=0.2,
+                grv=0.3,
+                domain="test",
+                difficulty=1,
+            )
+        ]
         tmp_dir = Path("tests/tmp_bk")
         backup_history(tmp_dir, hist, "test")
         files = list(tmp_dir.glob("test_*.json"))
