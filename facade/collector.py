@@ -308,7 +308,9 @@ def por_score(question: str, hist: list["HistoryEntry"]) -> float:
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """Return ΔE score via the v4 metric."""
-    return 0.0
+    if prev_answer is None:
+        return 0.0
+    return float(_DE.score(prev_answer, curr_answer))
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
@@ -398,7 +400,10 @@ def run_cycle(
 
         answer = get_ai_response(question, provider=provider)
         por = por_score(question, history)
-        de = delta_e(prev_answer, answer)
+        from core.delta_e_v4 import delta_e_v4
+        de = delta_e_v4(prev_answer or "", answer)
+        if de == 0.0:
+            print("[WARN] \u0394E could not be computed; check inputs.")
         grv = grv_score(answer, mode=grv_mode)
 
         if not quiet:
