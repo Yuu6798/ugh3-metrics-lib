@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 from ugh3_metrics.metrics import DeltaEV4
 from ugh3_metrics.metrics.deltae_v4 import _EmbedderProto
 
@@ -20,10 +18,8 @@ delta_e_v4 = calc_deltae_v4
 score = calc_deltae_v4
 
 
-def set_params(**kwargs: object) -> None:  # pragma: no cover - retained for API
+def set_params(embedder: _EmbedderProto | None = None) -> None:  # pragma: no cover - retained for API
     """Update metric parameters in a type-safe manner."""
-    embedder_obj = kwargs.get("embedder")
-    embedder = cast(_EmbedderProto | None, embedder_obj)
     _METRIC.set_params(embedder=embedder)
 
 
