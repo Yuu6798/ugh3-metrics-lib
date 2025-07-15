@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import math
 import numpy as np
 from typing import Any
 
@@ -38,6 +40,22 @@ class PorV4(BaseMetric):
 
             self._embedder = SimpleEmbedder()
 
+    def _safe_encode(self, txt: object) -> Any:
+        """Encode text after handling NaN / non-string inputs.
+
+        mypy で Optional[EmbedderProtocol] → EmbedderProtocol に
+        絞り込むため、実行時ガードを追加する。
+        """
+        if txt is None or (isinstance(txt, float) and math.isnan(txt)):
+            logging.debug("Replacing NaN with empty string for encoding")
+            txt = ""
+
+        # --- type guard ----------------------------------------------------
+        assert self._embedder is not None, "Embedder must be set before scoring"
+        # -------------------------------------------------------------------
+
+        return self._embedder.encode(str(txt))
+
     def score(
         self,
         a: str,
@@ -56,10 +74,9 @@ class PorV4(BaseMetric):
         _ = params
         if not a:
             return 0.0
-        # mypy: ここで None でないことを保証
-        assert self._embedder is not None
-        v1 = self._embedder.encode(a)
-        v2 = self._embedder.encode(b)
+
+        v1 = self._safe_encode(a)
+        v2 = self._safe_encode(b)
         sim = cosine_similarity(v1, v2)
         value = 1.0 / (1.0 + np.exp(-(self.DEFAULT_ALPHA * sim + self.DEFAULT_BETA)))
         return float(value)

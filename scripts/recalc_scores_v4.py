@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import logging
 import pandas as pd
 
 from tqdm import tqdm
-from joblib import Parallel, delayed
 
 from ugh3_metrics.metrics.deltae_v4 import DeltaEV4
 from ugh3_metrics.metrics.por_v4 import PorV4
@@ -31,9 +31,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_dataframe(path: Path) -> pd.DataFrame:
+    """Load CSV/Parquet and sanitize text columns."""
     if path.suffix.lower() in {".parquet", ".pq", ".parq"}:
-        return pd.read_parquet(path)
-    return pd.read_csv(path)
+        df = pd.read_parquet(path)
+    else:
+        df = pd.read_csv(path, keep_default_na=False)
+
+    return df.assign(
+        question=df["question"].astype(str).fillna(""),
+        answer_a=df["answer_a"].astype(str).fillna(""),
+        answer_b=df["answer_b"].astype(str).fillna(""),
+    )
 
 
 def main() -> None:
@@ -51,20 +59,29 @@ def main() -> None:
     de = DeltaEV4(auto_load=True)
     pv = PorV4(auto_load=True)
 
-    def _score_row(q: str, a1: str, a2: str) -> tuple[float, float, float]:
-        """Return PoR for both answers and ΔE between them."""
-        return pv.score(q, a1), pv.score(q, a2), de.score(a1, a2)
+    por_a: list[float] = []
+    por_b: list[float] = []
+    delta_e: list[float] = []
+    valid_indices: list[int] = []
 
-    results = Parallel(n_jobs=-1, prefer="threads")(
-        delayed(_score_row)(q, a1, a2)
-        for q, a1, a2 in tqdm(
-            zip(df["question"], df["answer_a"], df["answer_b"]),
-            total=len(df),
-            desc="Scoring",
-        )
-    )
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Scoring"):
+        q, a1, a2 = row["question"], row["answer_a"], row["answer_b"]
+        try:
+            pa = pv.score(q, a1)
+            pb = pv.score(q, a2)
+            de_val = de.score(a1, a2)
+        except TypeError as e:
+            logging.warning("Skip row %s: %s", idx, e)
+            continue
+        por_a.append(pa)
+        por_b.append(pb)
+        delta_e.append(de_val)
+        valid_indices.append(idx)
 
-    df["por_a"], df["por_b"], df["delta_e"] = map(list, zip(*results))
+    df = df.iloc[valid_indices].copy()
+    df["por_a"] = por_a
+    df["por_b"] = por_b
+    df["delta_e"] = delta_e
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False)
