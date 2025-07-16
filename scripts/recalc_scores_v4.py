@@ -16,6 +16,8 @@ import argparse
 from pathlib import Path
 import logging
 import pandas as pd
+import os
+import warnings
 
 from tqdm import tqdm
 
@@ -84,8 +86,15 @@ def main() -> None:
     df["delta_e"] = delta_e
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(out_path, index=False)
-    print(f"Wrote results to {out_path}")
+    try:
+        df.to_parquet(out_path, index=False)          # 通常は Parquet で保存
+        print(f"Wrote results to {out_path}")
+    except (ImportError, ValueError) as e:
+        # pyarrow / fastparquet 不在の CI で失敗した場合は CSV にフォールバック
+        warnings.warn(f"Parquet export failed ({e}); falling back to CSV.")
+        csv_fallback = out_path.with_suffix(".csv")
+        df.to_csv(csv_fallback, index=False)
+        print(f"Wrote CSV fallback to {csv_fallback}")
 
 
 if __name__ == "__main__":

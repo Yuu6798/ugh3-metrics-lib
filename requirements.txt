@@ -19,6 +19,9 @@ sentence-transformers>=2.6
 scikit-learn>=1.5
 pydantic[mypy]>=2.7       # extra を指定して  mypy プラグインを有効化
 
+# --- Parquet engine ----
+pyarrow>=15.0
+
 # --------------- AI provider (Issue → PR 自動生成で使用) ---------------
 openai>=1.14
 tenacity>=8.0
