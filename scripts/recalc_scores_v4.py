@@ -27,9 +27,34 @@ from ugh3_metrics.metrics.por_v4 import PorV4
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Recalculate PoR/ΔE v4 scores")
-    parser.add_argument("--infile", required=True, help="input CSV or Parquet")
-    parser.add_argument("--outfile", required=True, help="output Parquet path")
-    return parser.parse_args()
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=Path("datasets"),
+        help="directory containing dataset files",
+    )
+    parser.add_argument(
+        "--infile",
+        type=Path,
+        help="input CSV or Parquet (default: <data-dir>/current.csv)",
+    )
+    parser.add_argument(
+        "--outfile",
+        type=Path,
+        help="output Parquet path (default: <data-dir>/current_recalc.parquet)",
+    )
+    args = parser.parse_args()
+    if args.infile is None:
+        args.infile = args.data_dir / "current.csv"
+    elif not args.infile.is_absolute():
+        args.infile = args.data_dir / args.infile
+
+    if args.outfile is None:
+        args.outfile = args.data_dir / "current_recalc.parquet"
+    elif not args.outfile.is_absolute():
+        args.outfile = args.data_dir / args.outfile
+
+    return args
 
 
 def load_dataframe(path: Path) -> pd.DataFrame:
@@ -50,6 +75,8 @@ def main() -> None:
     args = parse_args()
     in_path = Path(args.infile)
     out_path = Path(args.outfile)
+    in_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = load_dataframe(in_path)
 
@@ -85,7 +112,6 @@ def main() -> None:
     df["por_b"] = por_b
     df["delta_e"] = delta_e
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         df.to_parquet(out_path, index=False)          # 通常は Parquet で保存
         print(f"Wrote results to {out_path}")

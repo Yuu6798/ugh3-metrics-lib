@@ -9,6 +9,7 @@ def test_import_example_modules() -> None:
 
 
 def test_scripts_run(tmp_path: Path) -> None:
+    (tmp_path / "datasets").mkdir(parents=True, exist_ok=True)
     import phase_map_demo
     import facade.collector
     import secl.qa_cycle
@@ -34,6 +35,7 @@ def test_scripts_run(tmp_path: Path) -> None:
 def test_run_cycle_generates_csv(tmp_path: Path) -> None:
     """run_cycle should create a CSV with expected columns and rows."""
     from facade.collector import run_cycle
+    (tmp_path / "datasets").mkdir(parents=True, exist_ok=True)
 
     out_file = tmp_path / "cycle.csv"
     steps = 2
