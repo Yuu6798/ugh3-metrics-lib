@@ -6,6 +6,10 @@ def main() -> None:
     parser.add_argument("files", nargs="+", help="source1 source2 ... dest")
     args = parser.parse_args()
 
+    if len(args.files) < 2:
+        parser.error(
+            "少なくとも 2 つのファイル (source1 … dest) を指定してください。"
+        )
     *sources, dest = args.files
     with open(dest, "a", encoding="utf-8") as out_f:
         for src in sources:
