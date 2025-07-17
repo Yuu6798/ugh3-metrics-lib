@@ -21,13 +21,9 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
 
       - name: Configure git
         run: |
@@ -55,7 +51,7 @@ jobs:
             echo 'valid=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "$ISSUE_BODY" | grep -Ei 'scripts/|\.py|\.md|requirements\.txt|diff|patch' >/dev/null && echo 'valid=true' >> "$GITHUB_OUTPUT" || echo 'valid=false' >> "$GITHUB_OUTPUT"
+          echo "$ISSUE_BODY" | grep -Ei 'scripts/|\.py|\.md|diff|patch' >/dev/null && echo 'valid=true' >> "$GITHUB_OUTPUT" || echo 'valid=false' >> "$GITHUB_OUTPUT"
 
       - name: Update progress - Validation complete
         if: steps.validate.outputs.valid == 'true'

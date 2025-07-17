@@ -16,16 +16,6 @@ unified-ai-issue-to-pr.yml : 統合処理（Issue解析→AI生成→PR作成→
 ## 概要 / Overview
 UGHer理論に基づき、AI内在ダイナミクスを評価するための基本的な数値指標を提供します。シンプルな実装なので、研究用途や他プロジェクトへの組み込みの参考実装として利用できます。
 
-方法1: GitHubから直接インストール
-pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
-
-方法2: 開発用インストール
-git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
-cd ugh3-metrics-lib
-pip install -e .
-
-方法3: 依存関係のみインストール
-pip install -r requirements.txt
 ## Features / 特徴
 ## アーキテクチャ特徴
 - 競合排除設計: 重複実行防止による安定性向上
@@ -38,32 +28,22 @@ pip install -r requirements.txt
 - Python 3.8+対応
 
 ## Installation / インストール
-```bash
-pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
-# PoR（共鳴点）の計算 - 問い品質、類似度、時間同期性を評価
-# ΔE（存在エネルギー差）の計算 - エネルギー状態の変化量
-# grv（語彙重力）の計算 - テキストの語彙的重みを測定
-## トラブルシューティング / Troubleshooting
 
-### よくある問題
-
-#### ImportError が発生する場合
+### Users
 ```bash
-pip install --upgrade -r requirements.txt
-計算結果が期待と異なる場合
-パラメータの範囲を確認（多くは 0.0-1.0）
-入力データの型と形式を確認
-examples/ ディレクトリの参考実装を確認
-可視化スクリプトが動作しない場合
-pip install matplotlib seaborn jupyter
-# または
-git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
+pip install por-deltae-lib
 ```
 
-## Installation (v2)
+### Development / CI
 ```bash
-pip install -r requirements.txt
+pip install -e .[dev]
 ```
+The `[dev]` extras group installs all tools needed for testing and
+type-checking, including `pytest`, `mypy`, `sentence-transformers`, and
+other optional packages used in the workflows.
+
+> **Migration note:** v0.1.0 から依存は `pyproject.toml` に一本化されました。
+> 開発者は `pip install -e .[dev]` を実行してください。
 
 ## Recalculate historical ΔE
 ```bash

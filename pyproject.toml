@@ -1,6 +1,6 @@
 [project]
 name = "por-deltae-lib"
-version = "0.1.0"
+version = "0.1.1"
 description = "PoR・ΔE OSS reference implementation"
 authors = [
   { name = "Yuu6798", email = "kkoo6798@gmail.com" },
@@ -8,6 +8,30 @@ authors = [
 requires-python = ">=3.8"
 dependencies = [
   "numpy>=1.24,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "mypy>=1.10",
+  "types-PyYAML",
+  "ipadic>=1.0,<2.0",
+  "matplotlib",
+  "pandas",
+  "rouge-score>=0.1.2",
+  "fugashi>=1.3",
+  "unbabel-comet==2.2.6",
+  "seaborn",
+  "bert-score",
+  "torch>=2.4",
+  "sentencepiece>=0.1.99",
+  "sentence-transformers>=2.6",
+  "scikit-learn>=1.5",
+  "pydantic[mypy]>=2.7",
+  "pyarrow>=15.0",
+  "openai>=1.14",
+  "tenacity>=8.0",
+  "build>=0.10",
 ]
 
 [build-system]

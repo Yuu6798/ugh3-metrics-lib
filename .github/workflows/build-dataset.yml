@@ -24,22 +24,16 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0         # 全履歴を取得して rebase が可能にする
-      - uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: '3.11'
       - name: Cache deps
         uses: actions/cache@v4
         with:
-          key: python-${{ hashFiles('requirements.txt') }}
+          key: python-${{ hashFiles('pyproject.toml') }}
           path: |
             ~/.cache/pip
             ~/.cache/torch/sentence_transformers
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          # 追加: パッケージを editable でインストール
-          pip install -e .
       - name: Scrape tech docs
         run: python scripts/scrape_docs.py --out tech.jsonl
       - name: Generate dialogs
@@ -148,15 +142,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: "3.12"
-
-      - name: Install deps
-        run: |
-          pip install -r requirements.txt
-          pip install -e .
 
       - name: Download dataset artefact
         uses: actions/download-artifact@v4
