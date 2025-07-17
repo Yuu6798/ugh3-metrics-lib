@@ -1,6 +1,6 @@
 [project]
 name = "por-deltae-lib"
-version = "0.1.0"
+version = "0.1.1"
 description = "PoR・ΔE OSS reference implementation"
 authors = [
   { name = "Yuu6798", email = "kkoo6798@gmail.com" },
@@ -31,6 +31,7 @@ dev = [
   "pyarrow>=15.0",
   "openai>=1.14",
   "tenacity>=8.0",
+  "build>=0.10",
 ]
 
 [build-system]

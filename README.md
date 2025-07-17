@@ -42,6 +42,9 @@ The `[dev]` extras group installs all tools needed for testing and
 type-checking, including `pytest`, `mypy`, `sentence-transformers`, and
 other optional packages used in the workflows.
 
+> **Migration note:** v0.1.0 から依存は `pyproject.toml` に一本化されました。
+> 開発者は `pip install -e .[dev]` を実行してください。
+
 ## Recalculate historical ΔE
 ```bash
 python recalc_deltae.py --input runs/deltae_log.csv --output runs/deltae_v2.csv
