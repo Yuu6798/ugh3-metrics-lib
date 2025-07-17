@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      - uses: ./.github/workflows/_shared-deps.yml
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: '3.11'
 

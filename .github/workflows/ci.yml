@@ -19,7 +19,7 @@ jobs:
       ST_CACHE: ${{ github.workspace }}/.cache/st
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/workflows/_shared-deps.yml
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: "3.12"
       - name: Clear all caches

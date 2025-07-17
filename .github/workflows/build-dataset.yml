@@ -24,7 +24,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0         # 全履歴を取得して rebase が可能にする
-      - uses: ./.github/workflows/_shared-deps.yml
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: '3.11'
       - name: Cache deps
@@ -142,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/workflows/_shared-deps.yml
+      - uses: ./.github/actions/setup-deps
         with:
           python-version: "3.12"
 

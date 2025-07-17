@@ -1,0 +1,15 @@
+name: Setup project (dev)
+description: Install Python, upgrade build tools, and `pip install -e .[dev]`
+inputs:
+  python-version:
+    description: Python version to use
+    default: '3.11'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - run: python -m pip install --upgrade pip setuptools wheel
+    - run: pip install -e .[dev]
