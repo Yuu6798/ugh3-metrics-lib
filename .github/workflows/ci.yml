@@ -19,7 +19,7 @@ jobs:
       ST_CACHE: ${{ github.workspace }}/.cache/st
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: ./.github/workflows/_shared-deps.yml
         with:
           python-version: "3.12"
       - name: Clear all caches
@@ -55,9 +55,6 @@ jobs:
             hf-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             hf-${{ runner.os }}-
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
       - name: Sanity-check deps
         run: |
           test -f requirements.txt || { echo "❌ requirements.txt not found"; exit 1; }

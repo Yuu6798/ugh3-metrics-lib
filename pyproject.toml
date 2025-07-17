@@ -10,10 +10,12 @@ dependencies = [
   "numpy>=1.24,<2.0",
 ]
 
-[project.optional-dependencies.dev]
+[project.optional-dependencies]
 dev = [
   "pytest>=8.0",
   "mypy>=1.10",
+  "types-PyYAML",
+  "ipadic>=2.0",
 ]
 
 [build-system]

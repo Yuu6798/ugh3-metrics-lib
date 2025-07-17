@@ -4,7 +4,7 @@ pytest
 pandas
 rouge-score>=0.1.2      # 日本語Rouge-L用
 fugashi>=1.3            # MeCab wrapper
-ipadic>=1.0             # MeCab dictionary
+ipadic>=2.0             # MeCab dictionary
 # COMET-Kiwi (多言語BLEURT代替) ── 2.2.6 が最新
 # 2.3 系はまだ PyPI に無いので、2.2 系に固定
 unbabel-comet==2.2.6
