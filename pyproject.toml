@@ -32,7 +32,6 @@ dev = [
   "openai>=1.14",
   "tenacity>=8.0",
   "build>=0.10",
-  "build",
 ]
 
 [build-system]
@@ -45,3 +44,9 @@ include-package-data = true
 [tool.setuptools.packages.find]
 include = ["secl*", "core*", "facade*", "ugh3_metrics*"]
 exclude = ["tests*", "images*", "datasets*", "stubs*"]
+
+[tool.mypy]
+exclude = '''(
+  ^build/
+ |^dist/
+)'''

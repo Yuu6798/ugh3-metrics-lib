@@ -70,6 +70,8 @@ jobs:
       - run: python -c "import matplotlib"
       - name: Static type check (mypy)
         run: mypy .
+      - name: Build package
+        run: python -m build --sdist --wheel
       - run: pytest -q
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
