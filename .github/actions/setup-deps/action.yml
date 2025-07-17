@@ -20,3 +20,7 @@ runs:
     - name: Install project (dev)
       run: pip install -e .[dev]
       shell: bash
+
+    - name: Build package
+      run: python -m build --sdist --wheel
+      shell: bash

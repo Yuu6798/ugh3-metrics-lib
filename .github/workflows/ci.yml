@@ -71,3 +71,10 @@ jobs:
       - name: Static type check (mypy)
         run: mypy .
       - run: pytest -q
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
