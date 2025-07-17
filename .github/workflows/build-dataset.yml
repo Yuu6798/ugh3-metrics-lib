@@ -91,8 +91,8 @@ jobs:
           set -euo pipefail
 
           DATE=$(date +%Y%m%d)
-          mkdir -p dataset
-          cp daily.jsonl dataset/$DATE.jsonl
+          mkdir -p datasets
+          cp daily.jsonl datasets/$DATE.jsonl
 
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -102,7 +102,7 @@ jobs:
           git pull --rebase  --autostash origin main || true
 
           # --- 変更が無ければスキップ ---
-          git add dataset/$DATE.jsonl
+          git add datasets/$DATE.jsonl
           if git diff --cached --quiet; then
             echo "No dataset changes; skipping commit."
             echo "date=$DATE" >> "$GITHUB_OUTPUT"

@@ -197,11 +197,13 @@ PoR scores over time. Running the script will save an image to
 | Workflow | Cron (UTC) | JST | 主要ステップ | 成果物 |
 |-----------|-----------|-----|-------------|--------|
 | **Auto Collect QA Logs** | `0 6 * * *` | 15:00 | Checkout → Run collector → por_history.csv を artifact | `por_history/por_history.csv` |
-| **Build Dataset** | `0 3 * * *` | 12:00 | Scrape docs → Generate dialogs → Tag → Merge/Commit | `dataset/YYYYMMDD.jsonl`, `dataset_today` artifact |
+| **Build Dataset** | `0 3 * * *` | 12:00 | Scrape docs → Generate dialogs → Tag → Merge/Commit | `datasets/YYYYMMDD.jsonl`, `dataset_today` artifact |
 
 1. `facade/collector.py` が 50 ターンの Q&A を自動生成し PoR / ΔE / grv を計算。
 2. `build-dataset.yml` では技術スクレイプ + 生成対話を JSONL 化し、毎日コミット。
 3. Secrets に **OPENAI_API_KEY** と **PAT_TOKEN** を設定するだけで、日次パイプラインが稼働します。
+
+データはリポジトリ直下の `./datasets/` 以下に保存されます。
 
 ```bash
 # 手動テスト (GitHub Actions の Run workflow でも可)
