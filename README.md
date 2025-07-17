@@ -38,6 +38,9 @@ pip install por-deltae-lib
 ```bash
 pip install -e .[dev]
 ```
+The `[dev]` extras group installs all tools needed for testing and
+type-checking, including `pytest`, `mypy`, `sentence-transformers`, and
+other optional packages used in the workflows.
 
 ## Recalculate historical ΔE
 ```bash

@@ -236,7 +236,7 @@ def get_ai_response(question: str, provider: str | None = None) -> str:
     similar to the above examples and extend the mapping in this function.
 
     OpenAI API access uses ``openai>=1.0.0`` with the ``Client`` class. See
-    ``requirements.txt`` for an installation example.
+    the project README for development installation instructions.
     """
 
     raw_provider: str = provider or os.getenv("AI_PROVIDER") or "dummy"

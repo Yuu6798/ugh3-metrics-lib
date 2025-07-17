@@ -42,7 +42,7 @@ jobs:
         with:
           path: ~/.cache/pip
           key: >
-            pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+            pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             pip-${{ runner.os }}-
 
@@ -52,12 +52,11 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: >
-            hf-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+            hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             hf-${{ runner.os }}-
       - name: Sanity-check deps
         run: |
-          test -f requirements.txt || { echo "❌ requirements.txt not found"; exit 1; }
           python - <<'PY'
           import importlib, sys
           for pkg in ("matplotlib", "pytest"):
