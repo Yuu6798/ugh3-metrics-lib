@@ -21,3 +21,7 @@ runs:
       run: pip install -e .[dev]
       shell: bash
 
+    - name: Clean build artifacts
+      run: rm -rf build dist *.egg-info
+      shell: bash
+
