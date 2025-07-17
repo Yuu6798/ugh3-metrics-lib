@@ -15,7 +15,7 @@ dev = [
   "pytest>=8.0",
   "mypy>=1.10",
   "types-PyYAML",
-  "ipadic>=2.0",
+  "ipadic>=1.0,<2.0",
   "matplotlib",
   "pandas",
   "rouge-score>=0.1.2",
