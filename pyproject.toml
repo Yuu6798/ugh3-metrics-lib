@@ -44,3 +44,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 include = ["secl*", "core*", "facade*", "ugh3_metrics*"]
 exclude = ["tests*", "images*", "datasets*", "stubs*"]
+
+[tool.mypy]
+exclude = "(^build/|^dist/|\\.egg-info/)"
+
