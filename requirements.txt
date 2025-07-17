@@ -1,3 +1,4 @@
+# This file is auto-generated via `pip-compile`; do not edit directly.
 matplotlib
 pytest
 pandas
@@ -12,7 +13,6 @@ bert-score
 mypy
 types-PyYAML          # for mypy stub of PyYAML
 # ---------------- core ML / NLP 依存 ----------------
-numpy==1.26.*
 torch>=2.4
 sentencepiece>=0.1.99
 sentence-transformers>=2.6

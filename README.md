@@ -22,10 +22,10 @@ pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
 方法2: 開発用インストール
 git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 cd ugh3-metrics-lib
-pip install -e .
+pip install -e .[dev]
 
 方法3: 依存関係のみインストール
-pip install -r requirements.txt
+pip install -e .[dev]
 ## Features / 特徴
 ## アーキテクチャ特徴
 - 競合排除設計: 重複実行防止による安定性向上
@@ -49,7 +49,7 @@ pip install git+https://github.com/Yuu6798/ugh3-metrics-lib.git
 
 #### ImportError が発生する場合
 ```bash
-pip install --upgrade -r requirements.txt
+pip install -e .[dev]
 計算結果が期待と異なる場合
 パラメータの範囲を確認（多くは 0.0-1.0）
 入力データの型と形式を確認
@@ -62,7 +62,7 @@ git clone https://github.com/Yuu6798/ugh3-metrics-lib.git
 
 ## Installation (v2)
 ```bash
-pip install -r requirements.txt
+pip install -e .[dev]
 ```
 
 ## Recalculate historical ΔE
