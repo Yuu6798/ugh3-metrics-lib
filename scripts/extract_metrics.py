@@ -12,9 +12,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, TextIO
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from core.metrics import is_por_fire
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +23,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def _process_stream(fh_in: Iterable[str], fh_out: TextIO) -> None:
+    from core.metrics import is_por_fire
     for line in fh_in:
         line = line.strip()
         if not line:
@@ -63,4 +61,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # allow running the script directly from repo root without installation
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     main()
