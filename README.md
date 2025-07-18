@@ -111,6 +111,8 @@ python examples/visualize_tensor.py --demo
 
 ## UGH3 Metrics 指標定義
 このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
+- `core.metrics` に `POR_FIRE_THRESHOLD = 0.82` を追加しました。
+- `scripts/extract_metrics.py` は新たに `por_fire` 列を出力します。
 
 ### 1. PoR（Point of Resonance）
 - **定義：** 照合強度のスコア。問いと応答の意味的整合性・圧力・時間的同期性を反映。
