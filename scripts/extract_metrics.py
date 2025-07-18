@@ -9,7 +9,7 @@ Usage examples::
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, TextIO
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _process_stream(fh_in: Iterable[str], fh_out) -> None:
+def _process_stream(fh_in: Iterable[str], fh_out: TextIO) -> None:
     for line in fh_in:
         line = line.strip()
         if not line:
