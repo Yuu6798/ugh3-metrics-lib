@@ -13,7 +13,11 @@ def test_cli_smoke() -> None:
         text=True,
         check=True,
     )
-    outs = [json.loads(l) for l in proc.stdout.strip().splitlines()]
-    fired = {rec["por_fire"] for rec in outs}
+    outs = []
+    for line in proc.stdout.strip().splitlines():
+        record = json.loads(line)
+        outs.append(record)
+
+    fired = {record["por_fire"] for record in outs}
     assert fired == {False, True}
 
