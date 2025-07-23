@@ -6,17 +6,18 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Callable, List
+from typing import Any, Callable
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
+from numpy.typing import NDArray
 
 from core.metrics import calc_delta_e_internal
 
 
-def _build_encoder(model_name: str) -> Callable[[str], np.ndarray]:
+def _build_encoder(model_name: str) -> Callable[[str], NDArray[np.floating[Any]]]:
     """Return a text encoder. Uses transformers if available."""
     try:
         from transformers import AutoModel, AutoTokenizer
@@ -25,7 +26,7 @@ def _build_encoder(model_name: str) -> Callable[[str], np.ndarray]:
         tok = AutoTokenizer.from_pretrained(model_name)
         mdl = AutoModel.from_pretrained(model_name)
 
-        def encode(text: str) -> np.ndarray:
+        def encode(text: str) -> NDArray[np.floating[Any]]:
             tokens = tok(text, return_tensors="pt")
             with torch.no_grad():
                 out = mdl(**tokens).last_hidden_state.mean(dim=1)
@@ -33,7 +34,7 @@ def _build_encoder(model_name: str) -> Callable[[str], np.ndarray]:
 
         return encode
     except Exception:
-        def encode(text: str) -> np.ndarray:
+        def encode(text: str) -> NDArray[np.float_]:
             h = int.from_bytes(hashlib.md5(text.encode()).digest()[:4], "big")
             return np.asarray([len(text), h], dtype=float)
 
@@ -60,7 +61,7 @@ def main() -> None:
         content = args.infile.read_text(encoding="utf-8")
         lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
 
-    vecs: List[np.ndarray] = [encode(line) for line in lines]
+    vecs: list[NDArray[np.floating[Any]]] = [encode(line) for line in lines]
 
     for i in range(1, len(vecs)):
         de = calc_delta_e_internal(vecs[i-1], vecs[i])
