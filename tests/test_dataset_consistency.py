@@ -7,8 +7,9 @@ import pytest
 DATA_PATH = Path(__file__).resolve().parents[1] / "datasets" / "current_recalc.parquet"
 
 
-@pytest.mark.skipif(
-    not DATA_PATH.exists(), reason="datasets/current_recalc.parquet not available"
+@pytest.mark.skipif(  # type: ignore[misc]
+    not DATA_PATH.exists(),
+    reason="datasets/current_recalc.parquet not available",
 )
 def test_dataset_consistency() -> None:
     """Basic sanity checks for the current dataset."""
