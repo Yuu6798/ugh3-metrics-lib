@@ -154,7 +154,9 @@ jobs:
 
       - name: Recalculate PoR/ΔE v4
         run: |
-          python scripts/recalc_scores_v4.py --data-dir datasets
+          python scripts/recalc_scores_v4.py \
+            --infile datasets/current.csv \
+            --outfile datasets/current_recalc.parquet
 
       - name: Upload recalculated dataset
         uses: actions/upload-artifact@v4
