@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Iterable, List, Any
+from pathlib import Path
+import yaml
 
 import numpy as np
 
@@ -9,10 +11,25 @@ from ..models.embedder import EmbedderProtocol
 from ..utils import tokenize, tfidf_topk, entropy, pmi
 
 
+def load_grv_weights() -> tuple[float, float, float]:
+    """Load default weights from YAML if available."""
+    path = Path(__file__).resolve().parents[2] / "config" / "grv.yaml"
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    except Exception:
+        data = {}
+    return (
+        float(data.get("tfidf", 0.42)),
+        float(data.get("entropy", 0.31)),
+        float(data.get("cooccurrence", 0.27)),
+    )
+
+
 class GrvV4(BaseMetric):
     """Lexical gravity v4 metric (TF-IDF + PMI + Entropy)."""
 
-    DEFAULT_WEIGHTS: tuple[float, float, float] = (0.42, 0.31, 0.27)
+    DEFAULT_WEIGHTS: tuple[float, float, float] = load_grv_weights()
     DEFAULT_WINDOW: int = 50
 
     def __init__(self, *, embedder: EmbedderProtocol | None = None) -> None:

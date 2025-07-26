@@ -9,7 +9,27 @@ capped at ``1.0``.
 from __future__ import annotations
 
 from typing import Iterable
+from pathlib import Path
+import yaml
 from math import log2
+
+
+def load_grv_weights() -> tuple[float, float, float]:
+    """Return GRV component weights from YAML, fallback to defaults."""
+    path = Path(__file__).resolve().parents[1] / "config" / "grv.yaml"
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    except Exception:
+        data = {}
+    return (
+        float(data.get("tfidf", 0.42)),
+        float(data.get("entropy", 0.31)),
+        float(data.get("cooccurrence", 0.27)),
+    )
+
+
+DEFAULT_WEIGHTS: tuple[float, float, float] = load_grv_weights()
 
 
 def _collect_vocab(texts: Iterable[str]) -> set[str]:
@@ -58,4 +78,4 @@ def grv_score(text: str | list[str], *, vocab_limit: int = 30, mode: str = "simp
     raise ValueError("invalid mode")
 
 
-__all__ = ["grv_score"]
+__all__ = ["grv_score", "load_grv_weights"]
