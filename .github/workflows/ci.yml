@@ -45,7 +45,7 @@ jobs:
         with:
           path: ~/.cache/pip
           key: >
-            pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             pip-${{ runner.os }}-
 
@@ -55,7 +55,7 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: >
-            hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+            hf-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             hf-${{ runner.os }}-
       - name: Sanity-check deps
