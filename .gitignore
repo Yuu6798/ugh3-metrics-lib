@@ -73,3 +73,4 @@ Thumbs.db
 backups/
 runs/
 temp_comet/
+/analysis_output/
