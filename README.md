@@ -111,6 +111,13 @@ python examples/visualize_tensor.py --demo
 ![Phase Map](images/phase_map.png)
 ![Tensor](images/tensor.png)
 
+### Dataset Analysis
+
+```bash
+python scripts/analyze_dataset.py --infile datasets/current_recalc.parquet
+open analysis_output/report.md
+```
+
 ## UGH3 Metrics 指標定義
 このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
 - `core.metrics` に `POR_FIRE_THRESHOLD = 0.82` を追加しました。
