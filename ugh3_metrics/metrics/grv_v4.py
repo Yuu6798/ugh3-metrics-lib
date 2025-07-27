@@ -33,6 +33,8 @@ class GrvV4(BaseMetric):
 
     DEFAULT_WEIGHTS: tuple[float, float, float] = load_grv_weights()
     DEFAULT_WINDOW: int = 50
+    # runtime default to avoid union expression TypeError on Python 3.9
+    _embedder: EmbedderProtocol | None = None  # set_params / lazy-load で上書き
 
     def __init__(self, *, embedder: EmbedderProtocol | None = None) -> None:
         self._embedder = embedder
