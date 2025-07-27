@@ -45,7 +45,8 @@ class DeltaEV4:  # noqa: D101
       へ段階的にフォールバックする。
     """
 
-    _embedder: _EmbedderProto | None = None  # set_params / lazy-load で上書き
+    # runtime default to avoid union expression TypeError on Python 3.9
+    _embedder: _EmbedderProto | None = None  # overridden via set_params/lazy-load
 
     # ------------------------------------------------------------------
     # コンストラクタ

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Iterable, List, Any
+
+# ensure Python 3.9 compatibility for union annotations
 from pathlib import Path
 import yaml
 
