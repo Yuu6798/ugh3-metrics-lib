@@ -117,6 +117,11 @@ python examples/visualize_tensor.py --demo
 python scripts/analyze_dataset.py --infile datasets/current_recalc.parquet
 open analysis_output/report.md
 ```
+```bash
+python scripts/evaluate_dataset.py \
+    --infile datasets/current_recalc.parquet \
+    --outdir evaluation_output
+```
 
 ## UGH3 Metrics 指標定義
 このライブラリで扱う UGH3 指標（内部ダイナミクス評価メトリクス）は以下の通りです。
