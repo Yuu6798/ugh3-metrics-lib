@@ -6,6 +6,13 @@ from pathlib import Path
 
 import pandas as pd
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+from core import stats as core_stats
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Evaluate dataset for public release")
@@ -20,6 +27,18 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("evaluation_output"),
         help="output directory",
+    )
+    p.add_argument(
+        "--group-col",
+        type=str,
+        default=None,
+        help="boolean column used to split rows into two groups",
+    )
+    p.add_argument(
+        "--metric-cols",
+        nargs="+",
+        default=["delta_e_internal", "grv_score"],
+        help="metric columns to compute effect size and Welch t-test",
     )
     return p.parse_args()
 
@@ -61,7 +80,24 @@ def main() -> int:
         rate = 0.0
     por_ok = 0.1 <= rate <= 0.4
 
-    all_ok = count_ok and delta_ok and por_ok
+    metrics_ok = True
+    results: list[tuple[str, float, float, float]] = []
+    group_col = args.group_col
+    if group_col and group_col in df.columns:
+        for col in args.metric_cols:
+            if col not in df.columns:
+                continue
+            a_group = df[df[group_col]].get(col).dropna()
+            b_group = df[~df[group_col]].get(col).dropna()
+            if len(a_group) == 0 or len(b_group) == 0:
+                continue
+            d = core_stats.cohen_d(a_group.to_numpy(dtype=float), b_group.to_numpy(dtype=float))
+            t, p = core_stats.welch_ttest(a_group.to_numpy(dtype=float), b_group.to_numpy(dtype=float))
+            results.append((col, d, t, p))
+            if not (abs(d) >= 0.5 and p < 0.05):
+                metrics_ok = False
+
+    all_ok = count_ok and delta_ok and por_ok and metrics_ok
 
     report = outdir / "report.md"
     with report.open("w", encoding="utf-8") as fh:
@@ -69,6 +105,13 @@ def main() -> int:
         fh.write(f"Total records: {len(df)}\n\n")
         fh.write(f"Valid delta_e_internal: {frac_valid*100:.2f}%\n\n")
         fh.write(f"por_fire rate: {rate:.3f}\n\n")
+        if results:
+            fh.write("## Metric Comparison\n\n")
+            for col, d, t, p in results:
+                fh.write(f"### {col}\n")
+                fh.write(f"- Cohen's d: {d:.3f}\n")
+                fh.write(f"- Welch t-stat: {t:.3f}\n")
+                fh.write(f"- p-value: {p:.4f}\n\n")
         fh.write("Status: **PASS**\n" if all_ok else "Status: **FAIL**\n")
 
     return 0 if all_ok else 2
