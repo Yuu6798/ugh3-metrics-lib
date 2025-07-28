@@ -32,6 +32,10 @@ def test_analyze_dataset_smoke(tmp_path: Path) -> None:
     assert (outdir / "hist_delta_e.png").exists()
     assert (outdir / "bar_por_fire.png").exists()
     assert (outdir / "scatter_delta_vs_grv.png").exists()
+    assert (outdir / "missing_rate.csv").exists()
+    assert (outdir / "missing_rate.md").exists()
+    assert (outdir / "outlier_summary.csv").exists()
+    assert (outdir / "box_delta_e_internal.png").exists()
 
     report_text = (outdir / "report.md").read_text(encoding="utf-8")
     assert "count" in report_text
