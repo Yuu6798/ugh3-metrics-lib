@@ -47,6 +47,34 @@ def main() -> None:
 
     summary_df = df[present].describe()
 
+    numeric_cols = [
+        c
+        for c in present
+        if pd.api.types.is_numeric_dtype(df[c]) and df[c].dtype != bool
+    ]
+    missing_df = df[present].isna().mean().to_frame("missing_rate")
+    missing_df.to_csv(outdir / "missing_rate.csv")
+    missing_df.to_markdown(outdir / "missing_rate.md")
+
+    outlier_counts = {}
+    for col in numeric_cols:
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+        df[f"{col}_outlier"] = (df[col] < lower) | (df[col] > upper)
+        outlier_counts[col] = int(df[f"{col}_outlier"].sum())
+
+        plt.figure()
+        df[col].dropna().plot.box()
+        plt.title(f"{col} boxplot")
+        plt.savefig(outdir / f"box_{col}.png")
+        plt.close()
+
+    outlier_df = pd.DataFrame.from_dict(outlier_counts, orient="index", columns=["outlier_count"])
+    outlier_df.to_csv(outdir / "outlier_summary.csv")
+
     if "delta_e_internal" in df.columns:
         plt.figure()
         df["delta_e_internal"].dropna().hist(bins=30)
