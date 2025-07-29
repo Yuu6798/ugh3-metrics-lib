@@ -58,6 +58,12 @@ python scripts/detect_duplicates.py --outdir dup_report
 open dup_report/report_dup.md
 ```
 
+### Workflow audit
+```bash
+python scripts/audit_workflows.py --out report/workflow_audit.md
+open report/workflow_audit.md
+```
+
 ## Quick Start / クイックスタート
 ```python
 from facade.trigger import por_trigger
