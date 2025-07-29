@@ -1,0 +1,27 @@
+name: Build Dataset Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-deps
+      - name: Build dataset
+        run: python scripts/build_dataset.py
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-dataset
+          path: datasets/current_recalc.parquet
+      - name: Create PR if changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Nightly dataset update"
+          title: "Automated dataset update"
+          branch: "dataset/nightly"
+          delete-branch: true

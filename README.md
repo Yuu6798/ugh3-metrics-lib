@@ -111,6 +111,16 @@ python examples/visualize_tensor.py --demo
 ![Phase Map](images/phase_map.png)
 ![Tensor](images/tensor.png)
 
+### Dataset Build
+The `build_dataset.py` script bundles CSV files under `raw/` and
+recalculates metrics into a Parquet dataset.
+
+```bash
+python scripts/build_dataset.py \
+  --raw-dir raw/ \
+  --out-parquet datasets/current_recalc.parquet
+```
+
 ### Dataset Analysis
 
 ```bash
