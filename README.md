@@ -52,6 +52,12 @@ python scripts/recalc_scores_v4.py \
   --outfile runs/metrics_recalc.parquet
 ```
 
+### Duplicate check
+```bash
+python scripts/detect_duplicates.py --outdir dup_report
+open dup_report/report_dup.md
+```
+
 ## Quick Start / クイックスタート
 ```python
 from facade.trigger import por_trigger
