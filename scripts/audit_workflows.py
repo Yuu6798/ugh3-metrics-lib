@@ -6,12 +6,12 @@ import argparse
 import difflib
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Tuple
 
 import yaml
 
 
-def load_workflow(path: Path) -> Dict[str, object]:
+def load_workflow(path: Path) -> Dict[str, Any]:
     data = yaml.safe_load(path.read_text()) or {}
     name = data.get("name", path.stem)
     on = data.get("on", {})
@@ -41,50 +41,58 @@ def load_workflow(path: Path) -> Dict[str, object]:
     }
 
 
-def diff_lines(a: Path, b: Path) -> str:
+def diff_lines(a: Path, b: Path) -> List[str]:
     a_lines = a.read_text().splitlines()
     b_lines = b.read_text().splitlines()
     diff = difflib.unified_diff(a_lines, b_lines, fromfile=a.name, tofile=b.name, lineterm="")
-    lines = [d for d in diff if d.startswith(('+', '-')) and not d.startswith(('+++', '---'))]
-    return "\n".join(lines)
+    lines = [
+        d
+        for d in diff
+        if d.startswith(("+", "-")) and not d.startswith(("+++", "---"))
+    ]
+    return list(lines)
 
 
-def group_similar(wfs: List[Dict[str, object]]) -> List[List[Dict[str, object]]]:
-    groups: List[List[Dict[str, object]]] = []
-    used: set[Path] = set()
+def group_similar(wfs: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    groups: List[List[Dict[str, Any]]] = []
+    used: set[str] = set()
     for i, w1 in enumerate(wfs):
-        if w1["path"] in used:
+        if str(w1["path"]) in used:
             continue
         group = [w1]
-        t1 = " ".join(sorted(w1["tokens"]))
+        t1 = " ".join(sorted([str(t) for t in w1["tokens"]]))
         for w2 in wfs[i + 1 :]:
-            t2 = " ".join(sorted(w2["tokens"]))
+            t2 = " ".join(sorted([str(t) for t in w2["tokens"]]))
             ratio = difflib.SequenceMatcher(None, t1, t2).ratio()
             if ratio >= 0.8:
                 group.append(w2)
-                used.add(w2["path"])
+                used.add(str(w2["path"]))
         if len(group) > 1:
             for g in group:
-                used.add(g["path"])
+                used.add(str(g["path"]))
             groups.append(group)
     return groups
 
 
-def generate_report(wfs: List[Dict[str, object]], groups: List[List[Dict[str, object]]]) -> str:
+def generate_report(wfs: List[Dict[str, Any]], groups: List[List[Dict[str, Any]]]) -> str:
     lines = ["# Workflow Audit", "", "## Summary", "| File | Workflow | Triggers | Jobs |", "| --- | --- | --- | --- |"]
     for wf in wfs:
         triggers = ", ".join(wf["triggers"])
-        lines.append(f"| {Path(wf['path']).name} | {wf['name']} | {triggers} | {len(wf['job_names'])} |")
+        lines.append(
+            f"| {Path(str(wf['path'])).name} | {wf['name']} | {triggers} | {len(wf['job_names'])} |"
+        )
     for idx, group in enumerate(groups, 1):
         lines.extend(["", f"## Duplicate group {idx}", "| File | Workflow | Jobs |", "| --- | --- | --- |"])
         for wf in group:
-            lines.append(f"| {Path(wf['path']).name} | {wf['name']} | {', '.join(wf['job_names'])} |")
+            lines.append(
+                f"| {Path(str(wf['path'])).name} | {wf['name']} | {', '.join(wf['job_names'])} |"
+            )
         base = group[0]
         for other in group[1:]:
-            diff = diff_lines(base["path"], other["path"])
+            diff = "\n".join(diff_lines(base["path"], other["path"]))
             lines.extend([
                 "",
-                f"### Diff with {Path(other['path']).name}",
+                f"### Diff with {Path(str(other['path'])).name}",
                 "```diff",
                 diff,
                 "```",
@@ -98,7 +106,7 @@ def main() -> int:
     args = parser.parse_args()
 
     wf_dir = Path(".github/workflows")
-    wfs = [load_workflow(p) for p in wf_dir.glob("*.yml")]
+    wfs = [load_workflow(p) for p in list(wf_dir.rglob("*.yml"))]
     groups = group_similar(wfs)
     report = generate_report(wfs, groups)
     args.out.parent.mkdir(parents=True, exist_ok=True)
