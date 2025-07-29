@@ -9,6 +9,7 @@ from secl.qa_cycle import (
     check_metric_anomalies,
     detect_por_null,
     backup_history,
+    send_alert,
 )
 from core.history_entry import HistoryEntry
 import json
@@ -49,6 +50,15 @@ class TestAnomalies(unittest.TestCase):
             self.assertEqual(data[0]["question"], "q")
             f.unlink()
         tmp_dir.rmdir()
+
+    def test_send_alert(self) -> None:
+        from unittest.mock import patch
+
+        with patch("urllib.request.urlopen") as m:
+            m.return_value.__enter__.return_value = None
+            with patch("secl.qa_cycle.ALERT_POST_URL", "http://example.com"):
+                send_alert("test")
+        m.assert_called_once()
 
 
 if __name__ == "__main__":

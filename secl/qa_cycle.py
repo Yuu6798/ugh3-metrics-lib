@@ -218,8 +218,13 @@ def send_alert(message: str) -> None:
             import urllib.request
 
             data = json.dumps({"message": message}).encode("utf-8")
-            req = urllib.request.Request(ALERT_POST_URL, data=data, headers={"Content-Type": "application/json"})
-            urllib.request.urlopen(req, timeout=5)
+            req = urllib.request.Request(
+                ALERT_POST_URL,
+                data=data,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=5):
+                pass
         except Exception as exc:  # pragma: no cover - network issues
             print(f"[Alert Error] {exc}")
 

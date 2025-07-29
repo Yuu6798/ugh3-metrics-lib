@@ -1,11 +1,13 @@
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Dataset](https://github.com/<OWNER>/<REPO>/actions/workflows/build_dataset.yml/badge.svg)
 
 # ugh3-metrics-lib
 
 UGHer PoR・ΔE OSSライブラリ＋リファレンス実装 (UGHer PoR/ΔE open source library and reference implementation).
 本リポジトリはPoR (Proof of Resonance) やΔE (存在エネルギー差)、grv (語彙重力) といった指標をPythonから簡単に計算するためのツール集です。
+Dataset is rebuilt nightly and on push.
 
 │   ├── unified-ai-issue-to-pr.yml  # 統合AIワークフロー（Issue→AI→PR自動化）
 │   ├── ci.yml                      # CI/テスト実行ワークフロー
