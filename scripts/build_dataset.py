@@ -8,7 +8,11 @@ import sys
 from pathlib import Path
 import tempfile
 
-import pandas as pd
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - optional dep
+    print("pandas is required to build the dataset", file=sys.stderr)
+    raise SystemExit(1)
 
 
 
