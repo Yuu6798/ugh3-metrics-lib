@@ -1,7 +1,7 @@
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
-![Dataset](https://github.com/<OWNER>/<REPO>/actions/workflows/build_dataset.yml/badge.svg)
+![Dataset](https://github.com/Yuu6798/ugh3-metrics-lib/actions/workflows/build_dataset.yml/badge.svg)
 
 # ugh3-metrics-lib
 
