@@ -24,9 +24,9 @@ jobs:
         with:
           path: ~/.cache/pip
           key: >-
-            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+            pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
-            pip-${{ runner.os }}-${{ matrix.python-version }}-
+            pip-${{ runner.os }}-
       - uses: ./.github/actions/setup-deps
         with:
           python-version: "3.12"
@@ -44,15 +44,7 @@ jobs:
           grep -n "subprocess" scripts/ai_issue_codegen.py || echo "No subprocess found (good!)"
           echo "=== Checking for apply_patch calls ==="
           grep -n "apply_patch" scripts/ai_issue_codegen.py || echo "No apply_patch calls found (good!)"
-      #––– Cache pip wheels –––#
-      - name: Cache pip wheels
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: >
-            pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            pip-${{ runner.os }}-
+
 
       #––– Cache HuggingFace models –––#
       - name: Cache HuggingFace models
