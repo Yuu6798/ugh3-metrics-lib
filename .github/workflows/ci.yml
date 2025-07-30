@@ -19,6 +19,14 @@ jobs:
       ST_CACHE: ${{ github.workspace }}/.cache/st
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: >-
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ matrix.python-version }}-
       - uses: ./.github/actions/setup-deps
         with:
           python-version: "3.12"
