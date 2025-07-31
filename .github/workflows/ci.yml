@@ -24,7 +24,7 @@ jobs:
         with:
           path: ~/.cache/pip
           key: >-
-            pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+            pip-${{ runner.os }}-3.12-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             pip-${{ runner.os }}-
       - uses: ./.github/actions/setup-deps

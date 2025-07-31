@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-deps
+      - name: Download raw CSV
+        run: |
+          set -euo pipefail
+          mkdir -p raw
+          curl -fsSL "$RAW_DATA_URL" | tar -xz -C raw
+          test -f raw/*.csv
+        env:
+          RAW_DATA_URL: ${{ secrets.RAW_DATA_URL }}
       - name: Build dataset
         run: python scripts/build_dataset.py
       - name: Recalculate metrics

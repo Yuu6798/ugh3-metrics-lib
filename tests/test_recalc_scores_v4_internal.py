@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from core.metrics import POR_FIRE_THRESHOLD
 
 
 def test_recalc_scores_v4_internal(tmp_path: Path) -> None:
