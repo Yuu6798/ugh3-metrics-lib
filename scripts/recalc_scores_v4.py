@@ -20,7 +20,6 @@ import argparse
 import json
 import csv
 import logging
-import os
 import warnings
 from pathlib import Path
 import sys

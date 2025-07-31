@@ -1,6 +1,5 @@
 import importlib
 
-from ugh3_metrics.metrics.grv_v4 import GrvV4
 
 
 def test_yaml_weights_loaded() -> None:
