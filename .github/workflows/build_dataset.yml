@@ -12,18 +12,34 @@ jobs:
     strategy:
       matrix:
         artefact_name: [nightly-dataset, por-dataset]
+        python-version: ['3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-deps
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
       - name: Download raw CSV
+        id: download_raw
         run: |
           set -euo pipefail
+          if [ -z "$RAW_DATA_URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           mkdir -p raw
           curl -fsSL "$RAW_DATA_URL" | tar -xz -C raw
           test -f raw/*.csv
         env:
           RAW_DATA_URL: ${{ secrets.RAW_DATA_URL }}
       - name: Build dataset
+        if: steps.download_raw.outputs.skip != 'true'
         run: python scripts/build_dataset.py
       - name: Recalculate metrics
         run: python scripts/recalc_scores_v4.py --infile datasets/current.csv --outfile datasets/current_recalc.parquet
