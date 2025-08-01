@@ -55,6 +55,7 @@ def main() -> int:
     try:
         df = load_raw_csvs(args.raw_dir)
     except FileNotFoundError:
+        print("[ERROR] no raw CSV found", file=sys.stderr)
         return 3
     except Exception as e:  # pragma: no cover - defensive
         print(f"[ERROR] {e}", file=sys.stderr)

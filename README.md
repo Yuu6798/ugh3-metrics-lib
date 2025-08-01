@@ -129,6 +129,8 @@ python examples/visualize_tensor.py --demo
 The `build_dataset.py` script bundles CSV files under `raw/` and
 recalculates metrics into a Parquet dataset.
 
+*If 'RAW_DATA_URL' is not set, the nightly workflow skips the build step.*
+
 ```bash
 python scripts/build_dataset.py \
   --raw-dir raw/ \
