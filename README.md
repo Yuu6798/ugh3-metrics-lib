@@ -53,6 +53,8 @@ python scripts/recalc_scores_v4.py \
   --infile runs/deltae_log.csv \
   --outfile runs/metrics_recalc.parquet
 ```
+The script falls back to a `.parquet` file when the CSV input is missing. Use
+`scripts/build_dataset.py --out-csv` to emit the CSV during dataset creation.
 
 ### Duplicate check
 ```bash
@@ -128,6 +130,7 @@ python examples/visualize_tensor.py --demo
 ### Dataset Build
 The `build_dataset.py` script bundles CSV files under `raw/` and
 recalculates metrics into a Parquet dataset.
+When `--out-csv` is supplied, `datasets/current.csv` is also produced.
 
 *If 'RAW_DATA_URL' is not set, the nightly workflow skips the build step.*
 

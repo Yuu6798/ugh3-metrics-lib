@@ -40,9 +40,14 @@ jobs:
           RAW_DATA_URL: ${{ secrets.RAW_DATA_URL }}
       - name: Build dataset
         if: steps.download_raw.outputs.skip != 'true'
-        run: python scripts/build_dataset.py
+        id: build
+        run: |
+          CSV_PATH=datasets/current.csv
+          python scripts/build_dataset.py --out-csv "$CSV_PATH"
+          echo "csv=$CSV_PATH" >> "$GITHUB_OUTPUT"
       - name: Recalculate metrics
-        run: python scripts/recalc_scores_v4.py --infile datasets/current.csv --outfile datasets/current_recalc.parquet
+        if: steps.build.outcome == 'success'
+        run: python scripts/recalc_scores_v4.py --infile ${{ steps.build.outputs.csv }} --outfile datasets/current_recalc.parquet
       - name: Upload artefact
         uses: actions/upload-artifact@v4
         with:

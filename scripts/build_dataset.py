@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("datasets/current_recalc.parquet"),
         help="output Parquet file",
     )
+    p.add_argument("--out-csv", type=Path, default=None, help="optional CSV output")
     return p.parse_args()
 
 
@@ -63,20 +64,34 @@ def main() -> int:
 
     args.out_parquet.parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
-        temp_path = Path(tmp.name)
-        df.to_csv(temp_path, index=False)
+    if args.out_csv:
+        args.out_csv.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(args.out_csv, index=False)
+        csv_path = args.out_csv
+    else:
+        tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        csv_path = Path(tmp.name)
+        df.to_csv(csv_path, index=False)
+        tmp.close()
 
     recalc = Path(__file__).resolve().parent / "recalc_scores_v4.py"
     try:
         subprocess.run(
-            [sys.executable, str(recalc), "--infile", str(temp_path), "--outfile", str(args.out_parquet)],
+            [
+                sys.executable,
+                str(recalc),
+                "--infile",
+                str(csv_path),
+                "--outfile",
+                str(args.out_parquet),
+            ],
             check=True,
         )
     except subprocess.CalledProcessError:
         return 1
     finally:
-        temp_path.unlink(missing_ok=True)
+        if not args.out_csv:
+            csv_path.unlink(missing_ok=True)
 
     return 0
 
