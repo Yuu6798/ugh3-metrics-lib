@@ -104,16 +104,28 @@ def save_records(path: Path, recs: List[Dict[str, Any]]) -> None:
         print(f"Wrote results to {path}")
 
 
-def main() -> None:
+def main() -> int:
     args = parse_args()
     in_path = Path(args.infile)
     out_path = Path(args.outfile)
     in_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    if not in_path.exists():
+        candidates = list(in_path.parent.glob("*.parquet"))
+        fallback = Path("datasets/current_recalc.parquet")
+        if candidates:
+            in_path = candidates[0]
+        elif fallback.exists():
+            in_path = fallback
+        else:
+            print("[ERROR] no input file", file=sys.stderr)
+            return 3
+
     recs = load_records(in_path)
     if not recs:
-        raise SystemExit("no records found")
+        print("[ERROR] no records found", file=sys.stderr)
+        return 1
 
     required = {"question", "answer_a", "answer_b"}
     if not required.issubset(recs[0]):
@@ -152,7 +164,8 @@ def main() -> None:
             rec["por_fire"] = False
 
     save_records(out_path, recs)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
