@@ -1,18 +1,16 @@
-from types import SimpleNamespace
-import numpy as np
 import pytest
 import ugh3_metrics.metrics.deltae_v4 as dmod
-from ugh3_metrics.metrics.deltae_v4 import DeltaEV4
+from ugh3_metrics.metrics.deltae_v4 import DeltaE4
 
 
-def test_lazyload_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """STS が import 出来ない環境でも動くか確認."""
-    monkeypatch.setitem(dmod.__dict__, "SentenceTransformer", None)
-    m = DeltaEV4()
-    assert m._embedder is None
+def test_error_when_no_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DELTAE4_FALLBACK", raising=False)
+    monkeypatch.setattr(dmod, "_load_embedder", lambda: (_ for _ in ()).throw(RuntimeError("no model")))
+    with pytest.raises(RuntimeError):
+        DeltaE4()
+
+
+def test_hash_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dmod, "_load_embedder", lambda: (_ for _ in ()).throw(RuntimeError("no model")))
+    m = DeltaE4(fallback="hash")
     assert isinstance(m.score("foo", "bar"), float)
-
-    dummy = SimpleNamespace(encode=lambda _: np.ones(2))
-    monkeypatch.setitem(dmod.__dict__, "SentenceTransformer", lambda *_: dummy)
-    m2 = DeltaEV4()
-    assert m2.score("x", "x") == 0.0

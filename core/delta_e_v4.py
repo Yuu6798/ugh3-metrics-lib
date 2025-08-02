@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from ugh3_metrics.metrics import DeltaEV4
+from ugh3_metrics.metrics import DeltaE4
 from ugh3_metrics.metrics.deltae_v4 import _EmbedderProto
 
-_METRIC = DeltaEV4()
+_METRIC = DeltaE4(fallback="hash")
 
 
 def calc_deltae_v4(a: str, b: str) -> float:

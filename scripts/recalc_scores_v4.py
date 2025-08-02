@@ -35,7 +35,7 @@ from typing import Any, Dict, List, cast
 
 from tqdm import tqdm
 
-from ugh3_metrics.metrics.deltae_v4 import DeltaEV4
+from ugh3_metrics.metrics.deltae_v4 import DeltaE4
 from ugh3_metrics.metrics.por_v4 import PorV4
 from core.metrics import POR_FIRE_THRESHOLD, calc_delta_e_internal
 
@@ -125,14 +125,18 @@ def main() -> int:
     recs = load_records(in_path)
     if not recs:
         print("[ERROR] no records found", file=sys.stderr)
-        return 1
+        return 3
 
     required = {"question", "answer_a", "answer_b"}
     if not required.issubset(recs[0]):
         missing = ", ".join(sorted(required - set(recs[0].keys())))
         raise SystemExit(f"missing required columns: {missing}")
 
-    de = DeltaEV4(auto_load=True)
+    try:
+        de = DeltaE4()
+    except RuntimeError as err:
+        print(f"[ERROR] {err}", file=sys.stderr)
+        return 2
     pv = PorV4(auto_load=True)
 
     for i, rec in enumerate(tqdm(recs, desc="Scoring")):

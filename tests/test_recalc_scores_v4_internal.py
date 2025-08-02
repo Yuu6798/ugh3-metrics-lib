@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -19,9 +20,11 @@ def test_recalc_scores_v4_internal(tmp_path: Path) -> None:
             json.dump(rec, fh)
             fh.write("\n")
 
+    env = {**os.environ, "DELTAE4_FALLBACK": "hash"}
     subprocess.run(
         [sys.executable, "scripts/recalc_scores_v4.py", "--infile", str(infile), "--outfile", str(outfile)],
         check=True,
+        env=env,
     )
     outs = [json.loads(line) for line in outfile.read_text(encoding="utf-8").splitlines()]
 
