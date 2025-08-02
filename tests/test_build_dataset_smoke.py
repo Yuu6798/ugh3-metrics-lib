@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,9 +17,11 @@ def test_build_dataset_smoke(tmp_path: Path) -> None:
     df2.to_csv(raw / "b.csv", index=False)
 
     out = tmp_path / "out.parquet"
+    env = {**os.environ, "DELTAE4_FALLBACK": "hash"}
     proc = subprocess.run(
         [sys.executable, "scripts/build_dataset.py", "--raw-dir", str(raw), "--out-parquet", str(out)],
         check=False,
+        env=env,
     )
     assert proc.returncode == 0
     assert out.exists()

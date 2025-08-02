@@ -1,4 +1,4 @@
-from ugh3_metrics.metrics.deltae_v4 import DeltaEV4
+from ugh3_metrics.metrics.deltae_v4 import DeltaE4
 
 
 class DummyEmb:
@@ -7,6 +7,6 @@ class DummyEmb:
 
 
 def test_set_params_embedder() -> None:
-    metric = DeltaEV4()
+    metric = DeltaE4(fallback="hash")
     metric.set_params(embedder=DummyEmb())
     assert metric.score("a", "b") == 0.0

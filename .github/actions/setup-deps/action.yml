@@ -17,6 +17,12 @@ runs:
       run: python -m pip install --upgrade pip setuptools wheel
       shell: bash
 
+    - name: Cache HF models
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/torch/sentence_transformers
+        key: hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
     - name: Install project (dev)
       run: pip install --progress-bar off -e .[dev]
       shell: bash

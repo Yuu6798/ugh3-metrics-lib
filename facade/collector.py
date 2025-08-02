@@ -21,10 +21,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from ugh3_metrics.metrics import DeltaEV4, GrvV4, PorV4
+from ugh3_metrics.metrics import DeltaE4, GrvV4, PorV4
 from core.history_entry import HistoryEntry
-
-_EMBEDDER: Any | None = None
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -47,28 +45,13 @@ def stratified_pairs(n: int) -> list[tuple[str, int]]:
     return pairs
 
 
-def _load_embedder() -> Any:
-    """Lazy-load shared embedding model with fallback."""
-
-    global _EMBEDDER
-    if _EMBEDDER is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            _EMBEDDER = SentenceTransformer("all-mpnet-base-v2")
-        except Exception:
-
-            class SimpleEmbedder:
-                def encode(self, text: str) -> list[float]:
-                    return [float(len(text.split()))]
-
-            _EMBEDDER = SimpleEmbedder()
-    return _EMBEDDER
-
-
 # --- metric singletons ----------------------------------------------------
 _POR = PorV4()  # PoR v4
-_DE = DeltaEV4()
+try:
+    _DE = DeltaE4()
+except RuntimeError as err:  # pragma: no cover - network/setup failure
+    print(f"[ERROR] {err}", file=sys.stderr)
+    sys.exit(2)
 _GRV = GrvV4()  # grv v4
 
 # ---------------------------------------------------------------------------

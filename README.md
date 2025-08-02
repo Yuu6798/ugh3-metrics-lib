@@ -35,13 +35,23 @@ UGHer理論に基づき、AI内在ダイナミクスを評価するための基�
 ```bash
 pip install por-deltae-lib
 ```
+The first use will download the required transformer model for the ΔE metric
+and cache it under `~/.cache/torch`.
+To prefetch the model ahead of time:
+
+```bash
+python - <<'PY'
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('all-MiniLM-L6-v2')
+PY
+```
 
 ### Development / CI
 ```bash
 pip install -e .[dev]
 ```
 The `[dev]` extras group installs all tools needed for testing and
-type-checking, including `pytest`, `mypy`, `sentence-transformers`, and
+type-checking, including `pytest`, `mypy`, and other optional packages.
 other optional packages used in the workflows.
 
 > **Migration note:** v0.1.0 から依存は `pyproject.toml` に一本化されました。
@@ -53,8 +63,11 @@ python scripts/recalc_scores_v4.py \
   --infile runs/deltae_log.csv \
   --outfile runs/metrics_recalc.parquet
 ```
-The script falls back to a `.parquet` file when the CSV input is missing. Use
-`scripts/build_dataset.py --out-csv` to emit the CSV during dataset creation.
+The first run downloads a small transformer model for ΔE and caches it under
+`~/.cache/torch`. The script falls back to a `.parquet` file when the CSV input
+is missing. Use `scripts/build_dataset.py --out-csv` to emit the CSV during
+dataset creation.
+If you prefer to cache the model beforehand, run the snippet above once.
 
 ### Duplicate check
 ```bash
@@ -107,9 +120,9 @@ from core.grv import grv_score
 <!-- AUTO SECTION END -->
 
 ### Reference Metrics
-PorV4, DeltaEV4, GrvV4, and SciV4 are provided as reference implementations
+PorV4, DeltaE4, GrvV4, and SciV4 are provided as reference implementations
 under `ugh3_metrics.metrics`. Integration tests in `tests/` cover these
-modules; `tests/test_deltae_v4_setparams.py` verifies `DeltaEV4` using a dummy
+modules; `tests/test_deltae_v4_setparams.py` verifies `DeltaE4` using a dummy
 embedder.
 
 ### Visualization Utilities / 可視化用ユーティリティ
