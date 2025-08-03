@@ -26,4 +26,5 @@ def test_no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     from ugh3_metrics.metrics.deltae_v4 import DeltaE4 as _DE
 
     m = _DE()
-    assert m.score("a", "b") == 0.0
+    with pytest.raises(RuntimeError):
+        m.score("a", "b")

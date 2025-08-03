@@ -134,9 +134,9 @@ def main() -> int:
 
     try:
         de = DeltaE4()
-    except RuntimeError as err:
-        print(f"[ERROR] {err}", file=sys.stderr)
-        return 2
+    except RuntimeError:
+        print("[ERROR] embedding failed", file=sys.stderr)
+        sys.exit(1)
     pv = PorV4(auto_load=True)
 
     for i, rec in enumerate(tqdm(recs, desc="Scoring")):

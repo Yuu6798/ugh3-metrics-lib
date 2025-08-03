@@ -7,8 +7,6 @@ import os
 
 import hashlib
 import numpy as np
-import warnings
-from difflib import SequenceMatcher
 
 if TYPE_CHECKING:  # pragma: no cover
     from sentence_transformers import SentenceTransformer
@@ -97,11 +95,7 @@ class DeltaE4:  # noqa: D101
             )
 
         if not np.linalg.norm(v1) or not np.linalg.norm(v2):
-            warnings.warn(
-                "zero\u2011vector detected; using diff.sim fallback",
-                RuntimeWarning,
-            )
-            return round(1.0 - SequenceMatcher(None, a, b).ratio(), 3)
+            raise RuntimeError("embedding zero")
         if np.allclose(v1, v2):
             return 0.0
         cos = float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))

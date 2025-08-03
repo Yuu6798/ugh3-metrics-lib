@@ -25,6 +25,13 @@ jobs:
           key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             pip-${{ runner.os }}-
+      - name: Cache HF models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            hf-${{ runner.os }}-
       - name: Download raw CSV
         id: download_raw
         run: |
@@ -43,16 +50,20 @@ jobs:
         id: build
         run: |
           CSV_PATH=datasets/current.csv
-          python scripts/build_dataset.py --out-csv "$CSV_PATH"
-          echo "csv=$CSV_PATH" >> "$GITHUB_OUTPUT"
+          python scripts/build_dataset.py --out-csv "$CSV_PATH" \
+                                         --out-parquet datasets/current.parquet
       - name: Recalculate metrics
-        if: steps.build.outcome == 'success'
-        run: python scripts/recalc_scores_v4.py --infile ${{ steps.build.outputs.csv }} --outfile datasets/current_recalc.parquet
+        if: steps.download_raw.outputs.skip != 'true'
+        run: |
+          python scripts/recalc_scores_v4.py \
+            --infile ${{ steps.build.outputs.csv }} \
+            --outfile datasets/current_recalc.parquet
       - name: Upload artefact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artefact_name }}
           path: datasets/current_recalc.parquet
+          if-no-files-found: skip
       - name: Create PR if changed
         uses: peter-evans/create-pull-request@v6
         with:

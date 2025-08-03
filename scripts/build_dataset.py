@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
-"""Build dataset from raw CSV files into a single Parquet table."""
+"""Build dataset from raw CSV files into a single table."""
+
 from __future__ import annotations
 
 import argparse
-import subprocess
+import os
 import sys
 from pathlib import Path
-import tempfile
 
-try:
+try:  # pragma: no cover - optional dependency
     import pandas as pd
-except Exception:  # pragma: no cover - optional dep
+except Exception:  # pragma: no cover - missing pandas
     print("pandas is required to build the dataset", file=sys.stderr)
     raise SystemExit(1)
 
 
-
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Combine raw CSVs and recalc metrics")
-    p.add_argument("--raw-dir", type=Path, default=Path("raw"), help="directory of raw CSV files")
-    p.add_argument(
-        "--out-parquet",
-        type=Path,
-        default=Path("datasets/current_recalc.parquet"),
-        help="output Parquet file",
-    )
-    p.add_argument("--out-csv", type=Path, default=None, help="optional CSV output")
+    p = argparse.ArgumentParser(description="Combine raw CSV files")
+    p.add_argument("--raw-dir", type=Path, default=Path("raw"), help="directory with raw CSV files")
+    p.add_argument("--out-csv", type=Path, default=None, help="optional CSV output path")
+    p.add_argument("--out-parquet", type=Path, default=None, help="optional Parquet output path")
     return p.parse_args()
 
 
@@ -53,6 +47,7 @@ def load_raw_csvs(raw_dir: Path) -> pd.DataFrame:
 
 def main() -> int:
     args = parse_args()
+
     try:
         df = load_raw_csvs(args.raw_dir)
     except FileNotFoundError:
@@ -62,39 +57,24 @@ def main() -> int:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1
 
-    args.out_parquet.parent.mkdir(parents=True, exist_ok=True)
+    if not args.out_csv and not args.out_parquet:
+        print("[ERROR] specify --out-csv or --out-parquet", file=sys.stderr)
+        return 2
 
     if args.out_csv:
         args.out_csv.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(args.out_csv, index=False)
-        csv_path = args.out_csv
-    else:
-        tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
-        csv_path = Path(tmp.name)
-        df.to_csv(csv_path, index=False)
-        tmp.close()
+        if (gh := os.getenv("GITHUB_OUTPUT")):
+            with open(gh, "a", encoding="utf-8") as fh:
+                fh.write(f"csv={args.out_csv}\n")
 
-    recalc = Path(__file__).resolve().parent / "recalc_scores_v4.py"
-    try:
-        subprocess.run(
-            [
-                sys.executable,
-                str(recalc),
-                "--infile",
-                str(csv_path),
-                "--outfile",
-                str(args.out_parquet),
-            ],
-            check=True,
-        )
-    except subprocess.CalledProcessError:
-        return 1
-    finally:
-        if not args.out_csv:
-            csv_path.unlink(missing_ok=True)
+    if args.out_parquet:
+        args.out_parquet.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(args.out_parquet, index=False)
 
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - CLI
     raise SystemExit(main())
+
