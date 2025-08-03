@@ -69,6 +69,16 @@ is missing. Use `scripts/build_dataset.py --out-csv` to emit the CSV during
 dataset creation.
 If you prefer to cache the model beforehand, run the snippet above once.
 
+### Workflow failure on embedding errors
+`DeltaE4` raises `RuntimeError` when no embedding model is available or a zero-vector is returned.  \
+Workflows invoking `recalc_scores_v4.py` therefore exit with status 1 in such cases.
+
+### build_dataset dual output
+Generate both CSV and Parquet in one run:
+```bash
+python scripts/build_dataset.py --out-csv datasets/current.csv --out-parquet datasets/current.parquet
+```
+
 ### Duplicate check
 ```bash
 python scripts/detect_duplicates.py --outdir dup_report
