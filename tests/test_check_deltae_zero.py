@@ -1,11 +1,19 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Sequence
+
 import pandas as pd
+import pytest
 import torch
 from scripts import check_deltae_zero
 
 
 class DummyModel:
-    def encode(self, texts, convert_to_tensor=True):
-        mapping = {
+    """Minimal stand-in for SentenceTransformer."""
+
+    def encode(self, texts: Sequence[str], convert_to_tensor: bool = True) -> torch.Tensor:
+        mapping: dict[str, list[float]] = {
             "q1": [1.0, 0.0, 0.0],
             "b1": [0.0, 1.0, 0.0],
             "q2": [0.0, 0.0, 0.0],
@@ -15,7 +23,7 @@ class DummyModel:
         return torch.tensor([mapping[t] for t in texts], dtype=torch.float32)
 
 
-def run_case(tmp_path, monkeypatch, ext: str) -> None:
+def run_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ext: str) -> None:
     df = pd.DataFrame(
         [
             {"question": "q1", "answer_a": "q1", "answer_b": "b1", "deltae": 0.0},
@@ -42,9 +50,9 @@ def run_case(tmp_path, monkeypatch, ext: str) -> None:
     assert list(out_df["deltae_zero_reason"]) == ["IDENTICAL_TEXT", "ZERO_VECTOR", ""]
 
 
-def test_csv(tmp_path, monkeypatch):
+def test_csv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     run_case(tmp_path, monkeypatch, ".csv")
 
 
-def test_parquet(tmp_path, monkeypatch):
+def test_parquet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     run_case(tmp_path, monkeypatch, ".parquet")

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Flag rows where delta-e is zero and record the reason."""
+# mypy: warn-unused-ignores=False
 
 from __future__ import annotations
 
@@ -48,9 +49,15 @@ def compute_reasons(df: pd.DataFrame, model: SentenceTransformer) -> pd.DataFram
         return df
 
     with torch.no_grad():
-        q_emb = model.encode(zero_rows["question"].tolist(), convert_to_tensor=True)
-        a_emb = model.encode(zero_rows["answer_a"].tolist(), convert_to_tensor=True)
-        b_emb = model.encode(zero_rows["answer_b"].tolist(), convert_to_tensor=True)
+        q_emb = model.encode(
+            zero_rows["question"].tolist(), convert_to_tensor=True
+        )  # type: ignore[call-arg]
+        a_emb = model.encode(
+            zero_rows["answer_a"].tolist(), convert_to_tensor=True
+        )  # type: ignore[call-arg]
+        b_emb = model.encode(
+            zero_rows["answer_b"].tolist(), convert_to_tensor=True
+        )  # type: ignore[call-arg]
 
     for i, idx in enumerate(zero_rows.index):
         q_vec = q_emb[i]
