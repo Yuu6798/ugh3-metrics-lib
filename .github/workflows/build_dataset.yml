@@ -6,11 +6,11 @@ on:
       purge:
         description: Purge flagged datasets
         required: false
-        default: 'false'
+        default: 'true'
       force:
         description: Skip confirmation when purging
         required: false
-        default: 'false'
+        default: 'true'
   schedule:
     - cron: "0 0 * * *"
     - cron: "0 3 * * *"
@@ -55,18 +55,17 @@ jobs:
         env:
           RAW_DATA_URL: ${{ secrets.RAW_DATA_URL }}
       - name: Scan zero-ΔE datasets
+        id: scan
         if: steps.download_raw.outputs.skip != 'true'
         run: |
-          ARGS="--min-rows 1000"
-          if [ "${{ github.event.inputs.purge }}" = "true" ]; then
-            ARGS="$ARGS --purge"
-            if [ "${{ github.event.inputs.force }}" = "true" ]; then
-              ARGS="$ARGS --force"
-            fi
-          fi
+          ARGS="--min-rows 1000 --purge --force"
           python scripts/detect_and_purge_zero_deltae.py $ARGS
+          status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+            exit "$status"
+          fi
       - name: Create removal PR
-        if: steps.download_raw.outputs.skip != 'true' && github.event.inputs.purge == 'true'
+        if: steps.download_raw.outputs.skip != 'true' && steps.scan.outputs.deleted != '0'
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "remove zero-ΔE datasets (auto)"

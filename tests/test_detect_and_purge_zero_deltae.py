@@ -69,3 +69,9 @@ def test_thresholds_and_purge(
     assert half_parquet.exists()
     assert calls[0][:2] == ["git", "rm"]
     assert calls[1][:2] == ["git", "commit"]
+
+
+def test_exit_code_no_deletions(tmp_path: Path) -> None:
+    _create_files(tmp_path)
+    code = main(["--min-rows", "10", "--purge", "--force"], tmp_path)
+    assert code == 3

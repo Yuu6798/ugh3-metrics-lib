@@ -12,6 +12,7 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Iterator, Sequence
@@ -150,6 +151,13 @@ def main(
     argv: Sequence[str] | None = None,
     datasets_dir: Path | None = None,
 ) -> int:
+    """Run zero-ΔE scan and optional purge.
+
+    Exit codes:
+        0: completed successfully (deletions may or may not have occurred).
+        3: ``--purge`` was specified but no files were deleted.
+    """
+
     args = parse_args(argv)
     root = datasets_dir or Path("datasets")
     results = [
@@ -159,8 +167,16 @@ def main(
     _print_markdown(results)
     _write_json(results)
     flagged_paths = [r.path for r in results if r.flagged]
+    deleted = len(flagged_paths)
+
+    if github_output := os.getenv("GITHUB_OUTPUT"):
+        with open(github_output, "a", encoding="utf-8") as fh:
+            fh.write(f"deleted={deleted}\n")
+
     if args.purge:
         _purge(flagged_paths, args.force)
+        if deleted == 0:
+            return 3
     return 0
 
 
