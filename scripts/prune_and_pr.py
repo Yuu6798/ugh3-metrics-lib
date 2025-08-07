@@ -7,7 +7,6 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
 
 import pandas as pd
 from github import Github
@@ -36,7 +35,7 @@ def _collect_targets(root: Path) -> list[Path]:
     return targets
 
 
-def _git(*args: Sequence[str]) -> None:
+def _git(*args: str) -> None:
     subprocess.run(["git", *args], check=True)
 
 
