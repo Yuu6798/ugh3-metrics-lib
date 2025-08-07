@@ -2,6 +2,15 @@ name: Build Dataset Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      purge:
+        description: Purge flagged datasets
+        required: false
+        default: 'false'
+      force:
+        description: Skip confirmation when purging
+        required: false
+        default: 'false'
   schedule:
     - cron: "0 0 * * *"
     - cron: "0 3 * * *"
@@ -45,6 +54,25 @@ jobs:
           test -f raw/*.csv
         env:
           RAW_DATA_URL: ${{ secrets.RAW_DATA_URL }}
+      - name: Scan zero-ΔE datasets
+        if: steps.download_raw.outputs.skip != 'true'
+        run: |
+          ARGS="--min-rows 1000"
+          if [ "${{ github.event.inputs.purge }}" = "true" ]; then
+            ARGS="$ARGS --purge"
+            if [ "${{ github.event.inputs.force }}" = "true" ]; then
+              ARGS="$ARGS --force"
+            fi
+          fi
+          python scripts/detect_and_purge_zero_deltae.py $ARGS
+      - name: Create removal PR
+        if: steps.download_raw.outputs.skip != 'true' && github.event.inputs.purge == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "remove zero-ΔE datasets (auto)"
+          title: "Remove zero-ΔE datasets"
+          branch: "dataset/remove-zero-deltae"
+          delete-branch: true
       - name: Build dataset
         if: steps.download_raw.outputs.skip != 'true'
         id: build
