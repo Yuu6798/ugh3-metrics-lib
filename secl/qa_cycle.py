@@ -398,11 +398,11 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
         score_threshold = max(score_threshold, low_por_th)
         stagnate_grv = is_grv_stagnation(grv_history)
         low_por = por < low_por_th
-        # constantized for readability
-        high_delta = delta_e > HIGH_DELTA_TH
+        # 高いデルタEを基準にした値
+        high_delta = delta_e >= HIGH_DELTA_TH
         stagnation = low_por or high_delta or stagnate_grv
         if stagnation and step > 0 and jump_cooldown == 0:
-            print("【再構検知】→ 意味的ジャンプor外部注入判定中...")
+            print("【再学習】高いデルタEのジャンプ外部入力判定中...")
             state = {
                 "low_por": low_por,
                 "high_delta": high_delta,
