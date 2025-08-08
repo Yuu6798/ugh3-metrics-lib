@@ -23,7 +23,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from utils.config_loader import CONFIG
+from utils.config_loader import CONFIG as _CONFIG
 from core.history_entry import HistoryEntry
 from ugh.adapters.metrics import (
     compute_por,
@@ -31,7 +31,8 @@ from ugh.adapters.metrics import (
     compute_grv_window,
 )
 
-__all__ = ["HistoryEntry"]
+CONFIG: Dict[str, Any] = _CONFIG
+__all__ = ["HistoryEntry", "CONFIG", "main_qa_cycle"]
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
@@ -173,7 +174,7 @@ def record_to_log(history_list: List[HistoryEntry], entry: HistoryEntry) -> List
 def detect_spike(current_score: float, history_list: List[HistoryEntry]) -> bool:
     if len(history_list) < 1:
         return False
-    prev_score = history_list[-1].score
+    prev_score = float(history_list[-1].score)
     return current_score - prev_score > 0.3
 
 

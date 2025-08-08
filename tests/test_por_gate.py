@@ -1,30 +1,31 @@
 from __future__ import annotations
 
 from pathlib import Path
+import pytest
 
 from secl import qa_cycle
 
 
-def _patch_metrics(monkeypatch, por: float = 0.9):
+def _patch_metrics(monkeypatch: pytest.MonkeyPatch, por: float = 0.9) -> None:
     monkeypatch.setattr(qa_cycle, "compute_por", lambda q, a, theta=0.82: por)
     monkeypatch.setattr(qa_cycle, "compute_delta_e_embed", lambda pq, cq, a: 0.1)
     monkeypatch.setattr(qa_cycle, "compute_grv_window", lambda hist: (0.1, set()))
 
 
-def test_high_por_adopt(monkeypatch, tmp_path):
+def test_high_por_adopt(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _patch_metrics(monkeypatch, por=0.9)
     history = qa_cycle.main_qa_cycle(1, tmp_path / "hist.csv")
     assert len(history) == 1
     assert history[0].por >= 0.9
 
 
-def test_low_por_reject(monkeypatch):
+def test_low_por_reject(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_metrics(monkeypatch, por=0.1)
     history = qa_cycle.main_qa_cycle(1)
     assert history == []
 
 
-def test_grv_stagnation_triggers_jump(monkeypatch):
+def test_grv_stagnation_triggers_jump(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_metrics(monkeypatch, por=0.9)
     monkeypatch.setattr(
         qa_cycle,
