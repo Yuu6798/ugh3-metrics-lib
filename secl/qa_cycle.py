@@ -46,6 +46,8 @@ GRV_STAGNATION_TH: float = CONFIG.get("GRV_STAGNATION_TH", 0.05)
 DUPLICATE_THRESHOLD: float = CONFIG.get("DUPLICATE_THRESHOLD", 0.9)
 EPS_BASE: float = CONFIG.get("EPS_BASE", 0.2)
 LOW_POR_TH: float = CONFIG.get("LOW_POR_TH", 0.25)
+# ΔE (delta_e) の高しきい値はここで一元管理
+HIGH_DELTA_TH: float = CONFIG.get("HIGH_DELTA_TH", 0.85)
 ANOMALY_POR_THRESHOLD: float = CONFIG.get("ANOMALY_POR_THRESHOLD", 0.9)
 ANOMALY_DELTA_E_THRESHOLD: float = CONFIG.get("ANOMALY_DELTA_E_THRESHOLD", 0.9)
 ANOMALY_GRV_THRESHOLD: float = CONFIG.get("ANOMALY_GRV_THRESHOLD", 0.95)
@@ -359,7 +361,9 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     history_list: List[HistoryEntry] = []
     delta_e_history: List[float] = []
     grv_history: List[float] = []
-    score_threshold = BASE_SCORE_THRESHOLD
+    # defaults to avoid undefined references on first iteration
+    score: float = 0.0
+    score_threshold: float = BASE_SCORE_THRESHOLD
     low_por_th = CONFIG.get("LOW_POR_TH", LOW_POR_TH)
     jump_cooldown = 0
     current_question = "意識はどこから生まれるか？"
@@ -389,20 +393,24 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
             delta_e = compute_delta_e_embed(prev_question, current_question, answer)
         delta_e_history.append(delta_e)
         por = compute_por(current_question, answer)
-        score = round(por, 3)
+        score: float = round(por, 3)
         score_threshold = update_score_threshold(delta_e_history, BASE_SCORE_THRESHOLD)
         score_threshold = max(score_threshold, low_por_th)
-        adopt = por >= score_threshold
         stagnate_grv = is_grv_stagnation(grv_history)
         low_por = por < low_por_th
-        high_delta = delta_e > 0.85
+        # constantized for readability
+        high_delta = delta_e > HIGH_DELTA_TH
         stagnation = low_por or high_delta or stagnate_grv
         if stagnation and step > 0 and jump_cooldown == 0:
-            print("  [停滞検知] → 意味的ジャンプor外部注入判定中...")
+            print("【再構検知】→ 意味的ジャンプor外部注入判定中...")
             state = {
                 "low_por": low_por,
                 "high_delta": high_delta,
                 "stagnate_grv": stagnate_grv,
+                "por": por,
+                "score_threshold": score_threshold,
+                "low_por_th": low_por_th,
+                "high_delta_th": HIGH_DELTA_TH,
             }
             action = select_action_for_jump(state)
             if action == "jump":

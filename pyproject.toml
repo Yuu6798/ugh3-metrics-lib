@@ -53,3 +53,7 @@ exclude = ["tests*", "images*", "datasets*", "stubs*"]
 [tool.mypy]
 exclude = "(^build/|^dist/|\\.egg-info/)"
 
+[tool.ruff.lint]
+# Ignore unused imports; enforce all other default checks (including F841)
+ignore = ["F401"]
+
