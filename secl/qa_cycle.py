@@ -21,12 +21,18 @@ import time
 from dataclasses import asdict
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
 
-from utils.config_loader import CONFIG
+from utils.config_loader import CONFIG as _CONFIG
 from core.history_entry import HistoryEntry
+from ugh.adapters.metrics import (
+    compute_por,
+    compute_delta_e_embed,
+    compute_grv_window,
+)
 
-__all__ = ["HistoryEntry"]
+CONFIG: Dict[str, Any] = _CONFIG
+__all__ = ["HistoryEntry", "CONFIG", "main_qa_cycle"]
 
 MAX_LOG_SIZE: int = CONFIG.get("MAX_LOG_SIZE", 10)
 BASE_SCORE_THRESHOLD: float = CONFIG.get("BASE_SCORE_THRESHOLD", 0.5)
@@ -39,6 +45,7 @@ GRV_WINDOW: int = CONFIG.get("GRV_WINDOW", 3)
 GRV_STAGNATION_TH: float = CONFIG.get("GRV_STAGNATION_TH", 0.05)
 DUPLICATE_THRESHOLD: float = CONFIG.get("DUPLICATE_THRESHOLD", 0.9)
 EPS_BASE: float = CONFIG.get("EPS_BASE", 0.2)
+LOW_POR_TH: float = CONFIG.get("LOW_POR_TH", 0.25)
 ANOMALY_POR_THRESHOLD: float = CONFIG.get("ANOMALY_POR_THRESHOLD", 0.9)
 ANOMALY_DELTA_E_THRESHOLD: float = CONFIG.get("ANOMALY_DELTA_E_THRESHOLD", 0.9)
 ANOMALY_GRV_THRESHOLD: float = CONFIG.get("ANOMALY_GRV_THRESHOLD", 0.95)
@@ -167,7 +174,7 @@ def record_to_log(history_list: List[HistoryEntry], entry: HistoryEntry) -> List
 def detect_spike(current_score: float, history_list: List[HistoryEntry]) -> bool:
     if len(history_list) < 1:
         return False
-    prev_score = history_list[-1].score
+    prev_score = float(history_list[-1].score)
     return current_score - prev_score > 0.3
 
 
@@ -229,13 +236,13 @@ def send_alert(message: str) -> None:
             print(f"[Alert Error] {exc}")
 
 
-def check_metric_anomalies(score: float, delta_e: float, grv: float) -> Tuple[bool, bool, bool]:
-    """Return flags for PoR, ΔE, grv anomalies based on thresholds."""
-    por_flag = score >= ANOMALY_POR_THRESHOLD
+def check_metric_anomalies(por: float, delta_e: float, grv: float) -> Tuple[bool, bool, bool]:
+    """Return flags for PoR, ΔE and grv anomalies based on thresholds."""
+    por_flag = por >= ANOMALY_POR_THRESHOLD
     delta_flag = delta_e >= ANOMALY_DELTA_E_THRESHOLD
     grv_flag = grv >= ANOMALY_GRV_THRESHOLD
     if por_flag:
-        send_alert(f"PoR anomaly detected: score {score:.2f}")
+        send_alert(f"PoR anomaly detected: score {por:.2f}")
     if delta_flag:
         send_alert(f"ΔE anomaly detected: {delta_e:.2f}")
     if grv_flag:
@@ -353,6 +360,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
     delta_e_history: List[float] = []
     grv_history: List[float] = []
     score_threshold = BASE_SCORE_THRESHOLD
+    low_por_th = CONFIG.get("LOW_POR_TH", LOW_POR_TH)
     jump_cooldown = 0
     current_question = "意識はどこから生まれるか？"
     prev_question: str = current_question
@@ -373,17 +381,21 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
         temp_entry.score = 0.0
         temp_entry.spike = False
         temp_entry.external = False
-        grv, vocab_set = calc_grv_field(history_list + [temp_entry])
+        grv, vocab_set = compute_grv_window(history_list + [temp_entry])
         grv_history.append(grv)
         if step == 0:
             delta_e = 0.0
         else:
-            delta_e = simulate_delta_e(prev_question, current_question, answer)
+            delta_e = compute_delta_e_embed(prev_question, current_question, answer)
         delta_e_history.append(delta_e)
+        por = compute_por(current_question, answer)
+        score = round(por, 3)
         score_threshold = update_score_threshold(delta_e_history, BASE_SCORE_THRESHOLD)
+        score_threshold = max(score_threshold, low_por_th)
+        adopt = por >= score_threshold
         stagnate_grv = is_grv_stagnation(grv_history)
-        low_por = history_list[-1].score < 0.25 if history_list else False
-        high_delta = history_list[-1].delta_e > 0.85 if history_list else False
+        low_por = por < low_por_th
+        high_delta = delta_e > 0.85
         stagnation = low_por or high_delta or stagnate_grv
         if stagnation and step > 0 and jump_cooldown == 0:
             print("  [停滞検知] → 意味的ジャンプor外部注入判定中...")
@@ -408,10 +420,8 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
                 answer, history_list, epsilon=EPS_BASE
             )
         novelty = novelty_score(next_question, history_list)
-        score = 0.6 * novelty + 0.4 * delta_e
-        score = round(score, 2)
         spike_flag = detect_spike(score, history_list)
-        anomaly_flags = check_metric_anomalies(score, delta_e, grv)
+        anomaly_flags = check_metric_anomalies(por, delta_e, grv)
         por_null_flag = detect_por_null(next_question, answer, novelty, delta_e)
         history_list = simulate_learn(
             next_question,
