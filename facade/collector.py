@@ -23,6 +23,8 @@ from typing import Any, Dict, List, Tuple
 
 from ugh3_metrics.metrics import DeltaE4, GrvV4, PorV4
 from core.history_entry import HistoryEntry
+from utils.config_loader import CONFIG
+from facade.secl_hook import maybe_apply_secl
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -78,6 +80,8 @@ POR_W2: float = 0.4
 def _dummy_response(question: str) -> str:
     """Return a deterministic fallback response."""
     return f"Answer for '{question}'"
+
+
 
 
 def _call_openai(
@@ -432,6 +436,13 @@ def run_cycle(
                 }
                 with open(jsonl_path, "a", encoding="utf-8") as jfh:
                     jfh.write(f"{rec_dict}\n")
+        # Run SECL and merge returned history only when a jump is triggered
+        # Run SECL; merge the returned history only when a jump is triggered.
+        _secl_res = maybe_apply_secl(question, history, CONFIG)
+        if _secl_res is not None and _secl_res.decision == "jump":
+            history = _secl_res.updated_history
+
+        # Always advance the cycle state regardless of jump decision.
         prev_answer = answer
         executed += 1
 
