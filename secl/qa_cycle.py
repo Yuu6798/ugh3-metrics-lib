@@ -399,7 +399,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
         score_threshold = max(score_threshold, low_por_th)
         stagnate_grv = is_grv_stagnation(grv_history)
         low_por = por < low_por_th
-        # 高いデルタEを基準にした値
+        # ΔE が閾値 (HIGH_DELTA_TH) を超えているか
         high_delta = delta_e >= HIGH_DELTA_TH
         stagnation = low_por or high_delta or stagnate_grv
         if stagnation and step > 0 and jump_cooldown == 0:
