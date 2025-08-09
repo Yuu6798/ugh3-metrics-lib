@@ -34,11 +34,21 @@ def test_run_cycle_generates_csv(tmp_path: Path) -> None:
     """run_cycle should create a CSV with expected columns and rows."""
     os.environ.setdefault("DELTAE4_FALLBACK", "hash")
     from facade.collector import run_cycle
+    from utils.config_loader import CONFIG
 
     (tmp_path / "datasets").mkdir(parents=True, exist_ok=True)
     out_file = tmp_path / "cycle.csv"
     steps = 2
-    run_cycle(steps, out_file, interactive=False)
+    # Disable SECL to ensure deterministic number of rows
+    prev_secl = CONFIG.get("SECL_ENABLED")
+    CONFIG["SECL_ENABLED"] = False
+    try:
+        run_cycle(steps, out_file, interactive=False)
+    finally:
+        if prev_secl is None:
+            del CONFIG["SECL_ENABLED"]
+        else:
+            CONFIG["SECL_ENABLED"] = prev_secl
 
     import csv
 
