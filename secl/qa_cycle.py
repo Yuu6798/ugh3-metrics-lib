@@ -393,7 +393,7 @@ def main_qa_cycle(n_steps: int = 25, save_path: Path | None = None) -> List[Hist
             delta_e = compute_delta_e_embed(prev_question, current_question, answer)
         delta_e_history.append(delta_e)
         por = compute_por(current_question, answer)
-        score: float = round(por, 3)
+        score = round(por, 3)
         score_threshold = update_score_threshold(delta_e_history, BASE_SCORE_THRESHOLD)
         score_threshold = max(score_threshold, low_por_th)
         stagnate_grv = is_grv_stagnation(grv_history)
