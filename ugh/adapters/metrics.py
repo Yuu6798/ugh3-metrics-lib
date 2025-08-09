@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Adapters for computing UGH metrics using real embeddings.
 
 This module provides thin wrappers around ``sentence-transformers`` to
@@ -7,6 +5,8 @@ calculate PoR (Proof of Response), ΔE (delta energy) and grv metrics.
 The functions are intentionally lightweight so that higher level modules
 can call them without worrying about model initialisation details.
 """
+
+from __future__ import annotations
 
 from typing import List, Tuple, Set, Optional, TYPE_CHECKING, cast
 

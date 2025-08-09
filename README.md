@@ -57,6 +57,22 @@ other optional packages used in the workflows.
 > **Migration note:** v0.1.0 から依存は `pyproject.toml` に一本化されました。
 > 開発者は `pip install -e .[dev]` を実行してください。
 
+## Configuration
+
+### HIGH_DELTA_TH (float)
+* 概要: ΔE（delta_e）の“高い”とみなす閾値。SECLの状態判定で使用。
+* 既定: `CONFIG.get("HIGH_DELTA_TH", 0.85)` で読み込み。
+  未設定時は 0.85。
+* 例:
+  ```toml
+  # config.toml (例)
+  HIGH_DELTA_TH = 0.90
+  ```
+  ```yaml
+  # config.yml (例)
+  HIGH_DELTA_TH: 0.90
+  ```
+
 ## Recalculate dataset metrics
 ```bash
 python scripts/recalc_scores_v4.py \
