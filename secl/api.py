@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Literal
 
 from core.history_entry import HistoryEntry
-from ugh.adapters.metrics import compute_por, compute_delta_e_embed, compute_grv_window
+from ugh.adapters.metrics import (
+    compute_por,
+    compute_delta_e_embed,
+    compute_grv_window,
+    prefetch_embed_model,
+)
 
 
 @dataclass
@@ -46,6 +51,12 @@ def evaluate_step(inputs: StepInputs) -> StepResult:
     ``"none"``), and a dictionary of debug information.  No logging or
     printing is performed inside this function.
     """
+
+    try:
+        prefetch_embed_model()
+    except Exception:
+        # ここでは握りつぶす。実際の可否は _require_model() 側で判断する。
+        pass
 
     global _jump_cooldown
 

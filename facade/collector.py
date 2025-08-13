@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from ugh3_metrics.metrics import DeltaE4, GrvV4, PorV4
+from ugh.adapters.metrics import DeltaE4, GrvV4, PorV4, prefetch_embed_model
 from core.history_entry import HistoryEntry
 from utils.config_loader import CONFIG
 from facade.secl_hook import maybe_apply_secl
@@ -490,6 +490,13 @@ def run_cycle(
 
 def main(argv: List[str] | None = None) -> None:
     """Command line interface for the collector."""
+    # Preload embedding model once
+    try:
+        prefetch_embed_model()
+    except Exception:
+        if os.getenv("DELTAE4_FALLBACK", "").lower() not in ("1", "true", "yes", "hash"):
+            raise
+
     parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector (ばらつき付き自動生成)")
     parser.add_argument(
         "-n",
