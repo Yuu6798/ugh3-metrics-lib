@@ -1,0 +1,166 @@
+name: Nightly Collect & Build Dataset
+
+on:
+  schedule:
+    - cron: '30 15 * * *'   # UTC。必要に応じて変更（例: JST 00:30 相当）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # data ブランチに push する場合に必要
+
+env:
+  PYTHON_VERSION: '3.11'
+  STEPS: '200'          # 1 夜あたりの収集件数（必要に応じて調整）
+  HF_HOME: ~/.cache/huggingface
+  DELTAE4_FALLBACK: '0'  # フォールバックを無効（=埋め込み失敗時は失敗させる）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Set date stamp
+        id: stamp
+        run: echo "DATE=$(date -u +%F)" >> "$GITHUB_ENV"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Cache HF hub
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.HF_HOME }}
+          key: ${{ runner.os }}-hfhub-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-hfhub-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # ライブラリ自体と必要ライブラリ
+          pip install -e .
+          pip install sentence-transformers pandas pyarrow datasets
+
+      # === ΔE=0 の主因（コールドスタート）対策：埋め込みモデルの先読み ===
+      - name: Prefetch embedding model
+        run: |
+          python - <<'PY'
+          from ugh.adapters.metrics import prefetch_embed_model
+          prefetch_embed_model()
+          print("prefetch done")
+          PY
+
+      # === 収集（raw 生成） ===
+      - name: Run auto collector
+        run: |
+          set -euo pipefail
+          mkdir -p "runs/${DATE}"
+          python -m facade.collector --auto -n "${STEPS}" --summary -o "runs/${DATE}/cycle.csv"
+          test -s "runs/${DATE}/cycle.csv"
+
+      # === ΔE=0 件数を計測（必要なら増し取りの足し前依頼） ===
+      - name: Count zero-DeltaE
+        id: zerochk
+        run: |
+          python - <<'PY'
+          import os, sys, pandas as pd
+          p = f"runs/{os.environ['DATE']}/cycle.csv"
+          df = pd.read_csv(p)
+          # 可能性のある列名を順に探索
+          col = next((c for c in ('delta_e','delta_e_','ΔE','de') if c in df.columns), None)
+          if not col:
+              raise SystemExit(f"delta_e column not found. columns={df.columns.tolist()}")
+          zeros = int((df[col] == 0).sum())
+          total = int(len(df))
+          print(f"zeros={zeros} total={total} col={col}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"zeros={zeros}\n")
+              f.write(f"total={total}\n")
+              f.write(f"col={col}\n")
+          PY
+
+      # （任意）ゼロ分だけ増し取りする場合。スキップしたいならこの step を削除。
+      - name: Top-off when zeros exist
+        if: ${{ steps.zerochk.outputs.zeros != '0' }}
+        run: |
+          set -euo pipefail
+          EXTRA=${{ steps.zerochk.outputs.zeros }}
+          echo "Top-off ${EXTRA} rows to replace zero-ΔE records…"
+          python -m facade.collector --auto -n "${EXTRA}" --summary -o "runs/${DATE}/cycle_extra.csv"
+
+      # === データセット生成（ΔE=0 を除去） ===
+      - name: Build dataset (filter ΔE==0)
+        id: buildset
+        run: |
+          python - <<'PY'
+          import os, glob, hashlib, json, pandas as pd
+          date = os.environ['DATE']
+          files = glob.glob(f"runs/{date}/cycle*.csv")
+          if not files:
+              raise SystemExit("No raw CSV files under runs/{date}")
+          dfs = [pd.read_csv(f) for f in files]
+          df = pd.concat(dfs, ignore_index=True)
+
+          col = next((c for c in ('delta_e','delta_e_','ΔE','de') if c in df.columns), None)
+          if not col:
+              raise SystemExit(f"delta_e column not found. columns={df.columns.tolist()}")
+
+          total = int(len(df))
+          zeros = int((df[col] == 0).sum())
+          df = df[df[col] != 0]
+
+          # 安定 ID（Q + A を基にハッシュ）
+          def key(row): return f"{row.get('question','')}##{row.get('answer_b', row.get('answer',''))}"
+          df["row_id"] = [hashlib.sha256(key(r).encode('utf-8')).hexdigest() for _, r in df.iterrows()]
+          df.drop_duplicates(subset=["row_id"], inplace=True)
+
+          outdir = f"datasets/{date}"
+          os.makedirs(outdir, exist_ok=True)
+          df.to_parquet(f"{outdir}/dataset.parquet", index=False)
+          df.to_csv(f"{outdir}/dataset.csv", index=False, encoding="utf-8")
+
+          meta = {"date": date, "records_total": total, "zeros_removed": zeros, "kept": int(len(df))}
+          with open(f"{outdir}/meta.json","w", encoding="utf-8") as f:
+              json.dump(meta, f, ensure_ascii=False, indent=2)
+          print(meta)
+
+          # GitHub Actions outputs
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f"kept={len(df)}\n")
+              f.write(f"removed={zeros}\n")
+          PY
+
+      # === 生成物を必ずアップロード ===
+      - name: Upload artifacts (raw + dataset)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-${{ env.DATE }}
+          path: |
+            runs/${{ env.DATE }}/
+            datasets/${{ env.DATE }}/
+          if-no-files-found: error
+          retention-days: 14
+
+      # （任意）data ブランチへコミットしたい場合
+      - name: Commit to data branch (optional)
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: |
+            runs/${{ env.DATE }}/*
+            datasets/${{ env.DATE }}/*
+          message: "dataset: ${{ env.DATE }} kept=${{ steps.buildset.outputs.kept }} removed_zero=${{ steps.buildset.outputs.removed }}"
+          new_branch: "data"

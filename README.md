@@ -260,12 +260,10 @@ PoR scores over time. Running the script will save an image to
 
 | Workflow | Cron (UTC) | JST | 主要ステップ | 成果物 |
 |-----------|-----------|-----|-------------|--------|
-| **Auto Collect QA Logs** | `0 6 * * *` | 15:00 | Checkout → Run collector → por_history.csv を artifact | `por_history/por_history.csv` |
-| **Build Dataset** | `0 3 * * *` | 12:00 | Scrape docs → Generate dialogs → Tag → Merge/Commit | `datasets/YYYYMMDD.jsonl`, `dataset_today` artifact |
+| **Nightly Collect & Build Dataset** | `30 15 * * *` | 00:30 | Prefetch model → Auto collect QA logs → Filter ΔE==0 → Upload dataset | `runs/${DATE}/cycle.csv`, `datasets/${DATE}/dataset.{parquet,csv}` |
 
-1. `facade/collector.py` が 50 ターンの Q&A を自動生成し PoR / ΔE / grv を計算。
-2. `build-dataset.yml` では技術スクレイプ + 生成対話を JSONL 化し、毎日コミット。
-3. Secrets に **OPENAI_API_KEY** と **PAT_TOKEN** を設定するだけで、日次パイプラインが稼働します。
+1. `nightly-collect-build-dataset.yml` が自動で Q&A を収集し PoR / ΔE / grv を計算、ΔE==0 を除去してデータセットを生成します。
+2. Secrets に **OPENAI_API_KEY** と **PAT_TOKEN** を設定するだけで、日次パイプラインが稼働します。
 
 データはリポジトリ直下の `./datasets/` 以下に保存されます。
 
@@ -276,14 +274,15 @@ python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai
 # ドメインと難易度は内部で自動的にばらつきを付けて生成されます
 
 <details>
-<summary>Mermaid Flow</summary>graph TD
-    A[Scrape Docs] --> B[Generate dialogs]
-    B --> C[Tag dataset]
-    C --> D[Merge & Commit]
-    subgraph Cron
-     B -->|15:00 JST| E[Auto Collect]
-     D -->|12:00 JST| F[Build Dataset]
-    end
+<summary>Mermaid Flow</summary>
+
+```mermaid
+graph TD
+    A[Generate dialogs] --> B[Tag dataset]
+    subgraph Cron
+      A -->|00:30 JST| C[Nightly Collect & Build Dataset]
+    end
+```
 
 </details>
 ```
