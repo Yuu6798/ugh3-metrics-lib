@@ -19,7 +19,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from ugh.adapters.metrics import DeltaE4, GrvV4, PorV4, prefetch_embed_model
@@ -28,6 +28,12 @@ from utils.config_loader import CONFIG
 from facade.secl_hook import maybe_apply_secl
 
 LOGGER = logging.getLogger(__name__)
+
+# --- helpers for LLM config (env) ---
+def _env(key: str, default: Optional[str] = None) -> Optional[str]:
+    import os
+    val = os.getenv(key)
+    return val if (val is not None and str(val).strip() != "") else default
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -81,7 +87,7 @@ POR_W2: float = 0.4
 
 
 def _dummy_response(question: str) -> str:
-    """Return a deterministic fallback response."""
+    """Return a deterministic fallback response (last resort)."""
     return f"Answer for '{question}'"
 
 
@@ -94,45 +100,56 @@ def _call_openai(
     max_tokens: int | None = None,
     role: str | None = None,
 ) -> str:
-    """Return an answer from OpenAI's API using the v1 `Client` interface.
+    """Return an answer from OpenAI (v1 Client優先、ダメなら v0 ChatCompletion)。
 
-    The `role` argument is informational only and currently unused.
-    Env vars read:
-      - OPENAI_API_KEY (required)
-      - OPENAI_MODEL (default: 'gpt-4o-mini')
-      - OPENAI_SYSTEM (optional system prompt)
+    環境変数:
+      - OPENAI_API_KEY  (必須)
+      - OPENAI_MODEL    (既定: gpt-4o-mini)
+      - OPENAI_SYSTEM   (任意の system プロンプト)
     """
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception:
-        LOGGER.warning("[AI provider] openai: library not installed; using dummy.")
-        return _dummy_response(question)
+    api_key = _env("OPENAI_API_KEY")
+    model = _env("OPENAI_MODEL", "gpt-4o-mini")
+    system = _env("OPENAI_SYSTEM", "")
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
+    if not api_key:
         LOGGER.warning("[AI provider] openai: OPENAI_API_KEY not set; using dummy.")
         return _dummy_response(question)
 
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    system = os.getenv("OPENAI_SYSTEM", "").strip()
-
-    client = OpenAI(api_key=api_key)
-    messages: list[dict[str, str]] = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": question})
-
-    params: Dict[str, Any] = {"model": model, "messages": messages}
-    if temperature is not None:
-        params["temperature"] = float(temperature)
-    if max_tokens is not None:
-        params["max_tokens"] = int(max_tokens)
-
+    # --- Path 1: v1 Client ---
     try:
+        from openai import OpenAI  # type: ignore
+        client = OpenAI(api_key=api_key)
+        msgs = [{"role": "user", "content": question}]
+        if system:
+            msgs = [{"role": "system", "content": system}] + msgs
+        params: Dict[str, Any] = {"model": model, "messages": msgs}
+        if temperature is not None:
+            params["temperature"] = float(temperature)
+        if max_tokens is not None:
+            params["max_tokens"] = int(max_tokens)
         resp: Any = client.chat.completions.create(**params)
-        return (resp.choices[0].message.content or "").strip()
+        return str(resp.choices[0].message.content or "").strip()
+    except ImportError:
+        LOGGER.info("[AI provider] openai v1 Client not available; trying v0 API.")
     except Exception as exc:
-        LOGGER.warning("[AI provider] openai call failed: %s; using dummy.", exc)
+        LOGGER.warning("[AI provider] openai v1 call failed: %s; trying v0 API.", exc)
+
+    # --- Path 2: v0 ChatCompletion ---
+    try:
+        import openai as openai_v0  # type: ignore
+        openai_v0.api_key = api_key
+        msgs = [{"role": "user", "content": question}]
+        if system:
+            msgs = [{"role": "system", "content": system}] + msgs
+        kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
+        if temperature is not None:
+            kwargs["temperature"] = float(temperature)
+        if max_tokens is not None:
+            kwargs["max_tokens"] = int(max_tokens)
+        resp = openai_v0.ChatCompletion.create(**kwargs)
+        return str(resp["choices"][0]["message"]["content"] or "").strip()
+    except Exception as exc:
+        LOGGER.warning("[AI provider] openai v0 call failed: %s; using dummy.", exc)
         return _dummy_response(question)
 
 
@@ -495,7 +512,7 @@ def run_cycle(
 # ---------------------------------------------------------------------------
 
 
-def main(argv: List[str] | None = None) -> None:
+def main(argv: List[str] | None = None) -> int:
     """Command line interface for the collector."""
     # Preload embedding model once
     try:
@@ -588,6 +605,10 @@ def main(argv: List[str] | None = None) -> None:
         grv_mode=args.grv_mode,
     )
 
+    # ここまで来て CSV を出力できていれば “成果物あり” として正常終了にする。
+    # 採択数不足や ΔE=0 の混入は後続ステップ（top-off / ビルド / アップロード）が処理するため非エラー扱い。
+    return 0
+
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
@@ -597,4 +618,5 @@ def main(argv: List[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
