@@ -20,11 +20,14 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+import logging
 
 from ugh.adapters.metrics import DeltaE4, GrvV4, PorV4, prefetch_embed_model
 from core.history_entry import HistoryEntry
 from utils.config_loader import CONFIG
 from facade.secl_hook import maybe_apply_secl
+
+LOGGER = logging.getLogger(__name__)
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -91,41 +94,46 @@ def _call_openai(
     max_tokens: int | None = None,
     role: str | None = None,
 ) -> str:
-    """Return a response from OpenAI's API using the v1 ``Client`` interface.
+    """Return an answer from OpenAI's API using the v1 `Client` interface.
 
-    The ``role`` argument is informational only and currently unused.
+    The `role` argument is informational only and currently unused.
+    Env vars read:
+      - OPENAI_API_KEY (required)
+      - OPENAI_MODEL (default: 'gpt-4o-mini')
+      - OPENAI_SYSTEM (optional system prompt)
     """
-
-    # ``openai`` is optional. Install via `pip install openai>=1.0.0` if needed
-    # and obtain an API key at https://platform.openai.com/account/api-keys
     try:
-        # v1 では ``OpenAI`` クラスからクライアントを生成します
-        from openai import OpenAI
-    except ImportError:
-        return "OpenAIプロバイダは利用できません（ライブラリ未インストール）"
+        from openai import OpenAI  # type: ignore
+    except Exception:
+        LOGGER.warning("[AI provider] openai: library not installed; using dummy.")
+        return _dummy_response(question)
 
-    # Read the API key from the OPENAI_API_KEY environment variable
     api_key = os.getenv("OPENAI_API_KEY")
     if not isinstance(api_key, str) or not api_key:
-        return "OpenAI APIキーが設定されていません。"
+        LOGGER.warning("[AI provider] openai: OPENAI_API_KEY not set; using dummy.")
+        return _dummy_response(question)
 
-    # Create the client instance with the API key
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    system = os.getenv("OPENAI_SYSTEM", "").strip()
+
     client = OpenAI(api_key=api_key)
+    messages: list[dict[str, str]] = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": question})
+
+    params: Dict[str, Any] = {"model": model, "messages": messages}
+    if temperature is not None:
+        params["temperature"] = float(temperature)
+    if max_tokens is not None:
+        params["max_tokens"] = int(max_tokens)
 
     try:
-        params: Dict[str, Any] = {
-            "model": "gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": question}],
-        }
-        if temperature is not None:
-            params["temperature"] = temperature
-        if max_tokens is not None:
-            params["max_tokens"] = max_tokens
         resp: Any = client.chat.completions.create(**params)
-        return str(resp.choices[0].message.content).strip()
-    except Exception as err:
-        # In case of failure, return a beginner-friendly error message
-        return f"OpenAI APIの呼び出しに失敗しました: {err}"
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as exc:
+        LOGGER.warning("[AI provider] openai call failed: %s; using dummy.", exc)
+        return _dummy_response(question)
 
 
 def _call_anthropic(
@@ -436,10 +444,9 @@ def run_cycle(
                 }
                 with open(jsonl_path, "a", encoding="utf-8") as jfh:
                     jfh.write(f"{rec_dict}\n")
-        # Run SECL and merge returned history only when a jump is triggered
-        # Run SECL; merge the returned history only when a jump is triggered.
+        # SECL を実行し、戻り値の履歴を常にマージ（jump 有無に関わらず）
         _secl_res = maybe_apply_secl(question, history, CONFIG)
-        if _secl_res is not None and _secl_res.decision == "jump":
+        if _secl_res is not None:
             history = _secl_res.updated_history
 
         # Always advance the cycle state regardless of jump decision.

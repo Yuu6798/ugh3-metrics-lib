@@ -103,7 +103,8 @@ def evaluate_step(inputs: StepInputs) -> StepResult:
         decision = "jump"
         _jump_cooldown = max(cooldown_val, 0)
 
-    updated_history = history + [temp_entry] if decision == "jump" else history
+    # 重要: jump の有無に関係なく、そのターンのレコードは必ず履歴へ追加する。
+    updated_history = history + [temp_entry]
 
     debug = {
         "por": por,

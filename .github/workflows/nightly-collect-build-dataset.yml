@@ -13,6 +13,10 @@ env:
   STEPS: '200'          # 1 夜あたりの収集件数（必要に応じて調整）
   HF_HOME: ~/.cache/huggingface
   DELTAE4_FALLBACK: '0'  # フォールバックを無効（=埋め込み失敗時は失敗させる）
+  # --- LLM (OpenAI) ---------------------------------------------------------
+  # NOTE: リポジトリの Secrets に OPENAI_API_KEY を追加してください。
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  OPENAI_MODEL: gpt-4o-mini
 
 jobs:
   build:
@@ -52,7 +56,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           # ライブラリ自体と必要ライブラリ
           pip install -e .
-          pip install sentence-transformers pandas pyarrow datasets
+          pip install sentence-transformers pandas pyarrow datasets openai tiktoken
 
       # === ΔE=0 の主因（コールドスタート）対策：埋め込みモデルの先読み ===
       - name: Prefetch embedding model
