@@ -19,7 +19,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from ugh.adapters.metrics import DeltaE4, GrvV4, PorV4, prefetch_embed_model
@@ -28,6 +28,11 @@ from utils.config_loader import CONFIG
 from facade.secl_hook import maybe_apply_secl
 
 LOGGER = logging.getLogger(__name__)
+
+# --- helpers for LLM config (env) ---
+def env(key: str, default: Optional[str] = None) -> Optional[str]:
+    val = os.getenv(key)
+    return val if (val is not None and str(val).strip() != "") else default
 
 STOPWORDS: set[str] = set()
 _stop_path = Path(__file__).resolve().parent.parent / "data" / "jp_stop.txt"
@@ -53,10 +58,10 @@ def stratified_pairs(n: int) -> list[tuple[str, int]]:
 # --- metric singletons ----------------------------------------------------
 _POR = PorV4()  # PoR v4
 try:
-    _DE = DeltaE4()
+    _DE: Optional[DeltaE4] = DeltaE4()
 except RuntimeError as err:  # pragma: no cover - network/setup failure
-    print(f"[ERROR] {err}", file=sys.stderr)
-    sys.exit(2)
+    LOGGER.warning("DeltaE4 unavailable at import time: %s (\u0394E will be skipped).", err)
+    _DE = None
 _GRV = GrvV4()  # grv v4
 
 # ---------------------------------------------------------------------------
@@ -81,7 +86,7 @@ POR_W2: float = 0.4
 
 
 def _dummy_response(question: str) -> str:
-    """Return a deterministic fallback response."""
+    """Return a deterministic fallback response (last resort)."""
     return f"Answer for '{question}'"
 
 
@@ -94,45 +99,45 @@ def _call_openai(
     max_tokens: int | None = None,
     role: str | None = None,
 ) -> str:
-    """Return an answer from OpenAI's API using the v1 `Client` interface.
+    """Return an answer from OpenAI. Prefer v1 Client; fall back to v1 module API."""
+    # NOTE: `role` is informational only at the moment.
 
-    The `role` argument is informational only and currently unused.
-    Env vars read:
-      - OPENAI_API_KEY (required)
-      - OPENAI_MODEL (default: 'gpt-4o-mini')
-      - OPENAI_SYSTEM (optional system prompt)
-    """
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception:
-        LOGGER.warning("[AI provider] openai: library not installed; using dummy.")
-        return _dummy_response(question)
+    # --- read configuration from env
+    api_key = env("OPENAI_API_KEY")
+    model = env("OPENAI_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+    system = (env("OPENAI_SYSTEM", "") or "").strip()
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
-        LOGGER.warning("[AI provider] openai: OPENAI_API_KEY not set; using dummy.")
-        return _dummy_response(question)
-
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    system = os.getenv("OPENAI_SYSTEM", "").strip()
-
-    client = OpenAI(api_key=api_key)
-    messages: list[dict[str, str]] = []
+    # --- build messages payload
+    msgs: List[Dict[str, str]] = [{"role": "user", "content": question}]
     if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": question})
+        msgs = [{"role": "system", "content": system}] + msgs
 
-    params: Dict[str, Any] = {"model": model, "messages": messages}
-    if temperature is not None:
-        params["temperature"] = float(temperature)
-    if max_tokens is not None:
-        params["max_tokens"] = int(max_tokens)
-
+    # --- primary path: v1 Client
     try:
-        resp: Any = client.chat.completions.create(**params)
-        return (resp.choices[0].message.content or "").strip()
+        from openai import OpenAI  # type: ignore[import-not-found]
+        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        client_kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
+        if temperature is not None:
+            client_kwargs["temperature"] = float(temperature)
+        if max_tokens is not None:
+            client_kwargs["max_tokens"] = int(max_tokens)
+        client_resp: Any = client.chat.completions.create(**client_kwargs)
+        return (client_resp.choices[0].message.content or "").strip()
     except Exception as exc:
-        LOGGER.warning("[AI provider] openai call failed: %s; using dummy.", exc)
+        LOGGER.warning("[AI provider] openai v1 Client not available; trying module API. (%s)", exc)
+
+    # --- fallback path: v1 module-level API (no v0 symbols)
+    try:
+        import openai  # type: ignore[import-not-found]
+        mod_kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
+        if temperature is not None:
+            mod_kwargs["temperature"] = float(temperature)
+        if max_tokens is not None:
+            mod_kwargs["max_tokens"] = int(max_tokens)
+        mod_resp: Any = openai.chat.completions.create(**mod_kwargs)  # type: ignore[attr-defined]
+        return (mod_resp.choices[0].message.content or "").strip()
+    except Exception as exc:
+        LOGGER.warning("[AI provider] openai v1 module call failed: %s; using dummy.", exc)
         return _dummy_response(question)
 
 
@@ -301,10 +306,21 @@ def por_score(question: str, hist: list["HistoryEntry"]) -> float:
 
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
-    """Return ΔE score via the v4 metric."""
+    """Return ΔE score via the v4 metric.
+
+    If the metric is unavailable or computation fails, returns ``0.0`` and
+    logs a warning so the caller can continue without ΔE.
+    """
     if prev_answer is None:
         return 0.0
-    return float(_DE.score(prev_answer, curr_answer))
+    if _DE is None:
+        LOGGER.warning("\u0394E could not be computed (model unavailable).")
+        return 0.0
+    try:
+        return float(_DE.score(prev_answer, curr_answer))
+    except Exception as exc:  # pragma: no cover - unexpected metric failure
+        LOGGER.warning("\u0394E could not be computed: %s", exc)
+        return 0.0
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
@@ -394,10 +410,7 @@ def run_cycle(
 
         answer = get_ai_response(question, provider=provider)
         por = por_score(question, history)
-        from core.delta_e_v4 import delta_e_v4
-        de = delta_e_v4(prev_answer or "", answer)
-        if de == 0.0:
-            print("[WARN] \u0394E could not be computed; check inputs.")
+        de = delta_e(prev_answer, answer)
         grv = grv_score(answer, mode=grv_mode)
 
         if not quiet:
@@ -495,7 +508,7 @@ def run_cycle(
 # ---------------------------------------------------------------------------
 
 
-def main(argv: List[str] | None = None) -> None:
+def main(argv: List[str] | None = None) -> int:
     """Command line interface for the collector."""
     # Preload embedding model once
     try:
@@ -588,6 +601,10 @@ def main(argv: List[str] | None = None) -> None:
         grv_mode=args.grv_mode,
     )
 
+    # ここまで来て CSV を出力できていれば “成果物あり” として正常終了にする。
+    # 採択数不足や ΔE=0 の混入は後続ステップ（top-off / ビルド / アップロード）が処理するため非エラー扱い。
+    return 0
+
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
 # python facade/collector.py --auto -n 50 --q-provider openai --ai-provider openai --quiet --summary
@@ -597,4 +614,5 @@ def main(argv: List[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
