@@ -59,10 +59,10 @@ def stratified_pairs(n: int) -> list[tuple[str, int]]:
 # --- metric singletons ----------------------------------------------------
 _POR = PorV4()  # PoR v4
 try:
-    _DE = DeltaE4()
+    _DE: Optional[DeltaE4] = DeltaE4()
 except RuntimeError as err:  # pragma: no cover - network/setup failure
-    print(f"[ERROR] {err}", file=sys.stderr)
-    sys.exit(2)
+    LOGGER.warning("DeltaE4 unavailable at import time: %s (\u0394E will be skipped).", err)
+    _DE = None
 _GRV = GrvV4()  # grv v4
 
 # ---------------------------------------------------------------------------
@@ -307,10 +307,21 @@ def por_score(question: str, hist: list["HistoryEntry"]) -> float:
 
 
 def delta_e(prev_answer: str | None, curr_answer: str) -> float:
-    """Return ΔE score via the v4 metric."""
+    """Return ΔE score via the v4 metric.
+
+    If the metric is unavailable or computation fails, returns ``0.0`` and
+    logs a warning so the caller can continue without ΔE.
+    """
     if prev_answer is None:
         return 0.0
-    return float(_DE.score(prev_answer, curr_answer))
+    if _DE is None:
+        LOGGER.warning("\u0394E could not be computed (model unavailable).")
+        return 0.0
+    try:
+        return float(_DE.score(prev_answer, curr_answer))
+    except Exception as exc:  # pragma: no cover - unexpected metric failure
+        LOGGER.warning("\u0394E could not be computed: %s", exc)
+        return 0.0
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
@@ -400,10 +411,7 @@ def run_cycle(
 
         answer = get_ai_response(question, provider=provider)
         por = por_score(question, history)
-        from core.delta_e_v4 import delta_e_v4
-        de = delta_e_v4(prev_answer or "", answer)
-        if de == 0.0:
-            print("[WARN] \u0394E could not be computed; check inputs.")
+        de = delta_e(prev_answer, answer)
         grv = grv_score(answer, mode=grv_mode)
 
         if not quiet:
