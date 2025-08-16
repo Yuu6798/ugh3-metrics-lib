@@ -30,7 +30,7 @@ from facade.secl_hook import maybe_apply_secl
 LOGGER = logging.getLogger(__name__)
 
 # --- helpers for LLM config (env) ---
-def _env(key: str, default: Optional[str] = None) -> Optional[str]:
+def env(key: str, default: Optional[str] = None) -> Optional[str]:
     import os
     val = os.getenv(key)
     return val if (val is not None and str(val).strip() != "") else default
@@ -104,9 +104,9 @@ def _call_openai(
     # NOTE: `role` is informational only at the moment.
 
     # --- read configuration from env
-    api_key = _env("OPENAI_API_KEY")
-    model = _env("OPENAI_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
-    system = (_env("OPENAI_SYSTEM", "") or "").strip()
+    api_key = env("OPENAI_API_KEY")
+    model = env("OPENAI_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+    system = (env("OPENAI_SYSTEM", "") or "").strip()
 
     # --- build messages payload
     msgs: List[Dict[str, str]] = [{"role": "user", "content": question}]
