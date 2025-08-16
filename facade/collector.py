@@ -31,7 +31,6 @@ LOGGER = logging.getLogger(__name__)
 
 # --- helpers for LLM config (env) ---
 def env(key: str, default: Optional[str] = None) -> Optional[str]:
-    import os
     val = os.getenv(key)
     return val if (val is not None and str(val).strip() != "") else default
 
