@@ -100,56 +100,45 @@ def _call_openai(
     max_tokens: int | None = None,
     role: str | None = None,
 ) -> str:
-    """Return an answer from OpenAI (v1 Client優先、ダメなら v0 ChatCompletion)。
+    """Return an answer from OpenAI. Prefer v1 Client; fall back to v1 module API."""
+    # NOTE: `role` is informational only at the moment.
 
-    環境変数:
-      - OPENAI_API_KEY  (必須)
-      - OPENAI_MODEL    (既定: gpt-4o-mini)
-      - OPENAI_SYSTEM   (任意の system プロンプト)
-    """
+    # --- read configuration from env
     api_key = _env("OPENAI_API_KEY")
-    model = _env("OPENAI_MODEL", "gpt-4o-mini")
-    system = _env("OPENAI_SYSTEM", "")
+    model = _env("OPENAI_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+    system = (_env("OPENAI_SYSTEM", "") or "").strip()
 
-    if not api_key:
-        LOGGER.warning("[AI provider] openai: OPENAI_API_KEY not set; using dummy.")
-        return _dummy_response(question)
+    # --- build messages payload
+    msgs: List[Dict[str, str]] = [{"role": "user", "content": question}]
+    if system:
+        msgs = [{"role": "system", "content": system}] + msgs
 
-    # --- Path 1: v1 Client ---
+    # --- primary path: v1 Client
     try:
-        from openai import OpenAI  # type: ignore
-        client = OpenAI(api_key=api_key)
-        msgs = [{"role": "user", "content": question}]
-        if system:
-            msgs = [{"role": "system", "content": system}] + msgs
-        params: Dict[str, Any] = {"model": model, "messages": msgs}
+        from openai import OpenAI  # type: ignore[import-not-found]
+        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        client_kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
         if temperature is not None:
-            params["temperature"] = float(temperature)
+            client_kwargs["temperature"] = float(temperature)
         if max_tokens is not None:
-            params["max_tokens"] = int(max_tokens)
-        resp: Any = client.chat.completions.create(**params)
-        return str(resp.choices[0].message.content or "").strip()
-    except ImportError:
-        LOGGER.info("[AI provider] openai v1 Client not available; trying v0 API.")
+            client_kwargs["max_tokens"] = int(max_tokens)
+        client_resp: Any = client.chat.completions.create(**client_kwargs)
+        return (client_resp.choices[0].message.content or "").strip()
     except Exception as exc:
-        LOGGER.warning("[AI provider] openai v1 call failed: %s; trying v0 API.", exc)
+        LOGGER.warning("[AI provider] openai v1 Client not available; trying module API. (%s)", exc)
 
-    # --- Path 2: v0 ChatCompletion ---
+    # --- fallback path: v1 module-level API (no v0 symbols)
     try:
-        import openai as openai_v0  # type: ignore
-        openai_v0.api_key = api_key
-        msgs = [{"role": "user", "content": question}]
-        if system:
-            msgs = [{"role": "system", "content": system}] + msgs
-        kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
+        import openai  # type: ignore[import-not-found]
+        mod_kwargs: Dict[str, Any] = {"model": model, "messages": msgs}
         if temperature is not None:
-            kwargs["temperature"] = float(temperature)
+            mod_kwargs["temperature"] = float(temperature)
         if max_tokens is not None:
-            kwargs["max_tokens"] = int(max_tokens)
-        resp = openai_v0.ChatCompletion.create(**kwargs)
-        return str(resp["choices"][0]["message"]["content"] or "").strip()
+            mod_kwargs["max_tokens"] = int(max_tokens)
+        mod_resp: Any = openai.chat.completions.create(**mod_kwargs)  # type: ignore[attr-defined]
+        return (mod_resp.choices[0].message.content or "").strip()
     except Exception as exc:
-        LOGGER.warning("[AI provider] openai v0 call failed: %s; using dummy.", exc)
+        LOGGER.warning("[AI provider] openai v1 module call failed: %s; using dummy.", exc)
         return _dummy_response(question)
 
 
