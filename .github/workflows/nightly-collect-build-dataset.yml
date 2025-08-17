@@ -54,9 +54,21 @@ jobs:
         run: |
           python -m pip install -U pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # ライブラリ自体と必要ライブラリ
           pip install -e .
-          pip install sentence-transformers pandas pyarrow datasets openai tiktoken
+          pip install "openai>=1.30.0,<2" "tiktoken>=0.7.0" sentence-transformers pandas pyarrow datasets
+
+      - name: Show dependency versions
+        run: |
+          python - <<'PY'
+          import importlib, sys
+          print("python", sys.version)
+          for name in ("openai", "tiktoken", "sentence_transformers"):
+              try:
+                  mod = importlib.import_module(name)
+                  print(name, getattr(mod, "__version__", "unknown"))
+              except Exception as e:  # pragma: no cover - best effort logging
+                  print(f"{name} unavailable ({e})")
+          PY
 
       # === ΔE=0 の主因（コールドスタート）対策：埋め込みモデルの先読み ===
       - name: Prefetch embedding model
