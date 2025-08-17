@@ -19,7 +19,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from ugh.adapters.metrics import DeltaE4, GrvV4, PorV4, prefetch_embed_model
@@ -41,6 +41,12 @@ DOMAINS: list[str] = ["general", "creative", "technical", "specialized"]
 DIFFICULTIES: list[int] = [1, 2, 3, 4, 5]
 
 
+def _env(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Return ``key`` from the environment or ``default`` if missing/blank."""
+    val = os.getenv(key)
+    return val.strip() if isinstance(val, str) and val.strip() else default
+
+
 def stratified_pairs(n: int) -> list[tuple[str, int]]:
     """Return ``n`` domain/difficulty pairs with roughly equal coverage."""
     base = list(itertools.product(DOMAINS, DIFFICULTIES))
@@ -52,12 +58,14 @@ def stratified_pairs(n: int) -> list[tuple[str, int]]:
 
 # --- metric singletons ----------------------------------------------------
 _POR = PorV4()  # PoR v4
+_DE: Optional[DeltaE4]
 try:
     _DE = DeltaE4()
 except RuntimeError as err:  # pragma: no cover - network/setup failure
-    print(f"[ERROR] {err}", file=sys.stderr)
-    sys.exit(2)
+    _DE = None
+    LOGGER.warning("DeltaE4 unavailable at import time: %s (AE will be skipped).", err)
 _GRV = GrvV4()  # grv v4
+_DE_WARNED = False
 
 # ---------------------------------------------------------------------------
 # Scoring weights and thresholds
@@ -87,6 +95,53 @@ def _dummy_response(question: str) -> str:
 
 
 
+def resolve_openai_model() -> str:
+    """Resolve the OpenAI model to use based on environment variables.
+
+    Priority order:
+    1. If ``OPENAI_MODEL`` is set, return it directly.
+    2. If ``OPENAI_MODEL_AUTO=1`` then attempt to pick the latest snapshot
+       for ``OPENAI_MODEL_FAMILY``.  Prefer ``<family>-latest`` when present,
+       otherwise query the Models API for ``<family>-YYYY-MM-DD`` IDs and
+       choose the newest.  On any failure, fall back to the family name.
+    3. Otherwise return ``OPENAI_MODEL_FAMILY`` (default: ``gpt-4o-mini``).
+    """
+
+    family = _env("OPENAI_MODEL_FAMILY", "gpt-4o-mini") or "gpt-4o-mini"
+    explicit = _env("OPENAI_MODEL")
+    if explicit:
+        return explicit
+
+    auto = (_env("OPENAI_MODEL_AUTO", "") or "").lower() in ("1", "true", "yes")
+    preferred_alias = _env("OPENAI_MODEL_ALIAS", f"{family}-latest")
+    if not auto:
+        return family
+
+    try:
+        from openai import OpenAI  # type: ignore[import-not-found]
+
+        client = OpenAI(api_key=_env("OPENAI_API_KEY") or None)  # type: ignore[arg-type]
+        ids = [m.id for m in client.models.list().data]  # type: ignore[attr-defined]
+        if preferred_alias and preferred_alias in ids:
+            return preferred_alias
+
+        import re
+
+        pat = re.compile(rf"^{re.escape(family)}-(\d{{4}}-\d{{2}}-\d{{2}})$")
+        snaps: list[tuple[str, str]] = []
+        for mid in ids:
+            m = pat.match(mid)
+            if m:
+                snaps.append((m.group(1), mid))
+        if snaps:
+            snaps.sort()
+            return snaps[-1][1]
+    except Exception:
+        pass
+
+    return family
+
+
 def _call_openai(
     question: str,
     *,
@@ -94,46 +149,44 @@ def _call_openai(
     max_tokens: int | None = None,
     role: str | None = None,
 ) -> str:
-    """Return an answer from OpenAI's API using the v1 `Client` interface.
+    """Return an answer from OpenAI's API with graceful fallbacks.
 
-    The `role` argument is informational only and currently unused.
+    The ``role`` argument is informational only and currently unused.
     Env vars read:
       - OPENAI_API_KEY (required)
-      - OPENAI_MODEL (default: 'gpt-4o-mini')
+      - OPENAI_MODEL (default resolved via :func:`resolve_openai_model`)
       - OPENAI_SYSTEM (optional system prompt)
     """
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception:
-        LOGGER.warning("[AI provider] openai: library not installed; using dummy.")
-        return _dummy_response(question)
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not isinstance(api_key, str) or not api_key:
+    api_key = _env("OPENAI_API_KEY")
+    if not api_key:
         LOGGER.warning("[AI provider] openai: OPENAI_API_KEY not set; using dummy.")
         return _dummy_response(question)
 
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    system = os.getenv("OPENAI_SYSTEM", "").strip()
-
-    client = OpenAI(api_key=api_key)
-    messages: list[dict[str, str]] = []
+    model = resolve_openai_model()
+    system = (_env("OPENAI_SYSTEM") or "").strip()
+    messages: List[Dict[str, str]] = [{"role": "user", "content": question}]
     if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": question})
-
-    params: Dict[str, Any] = {"model": model, "messages": messages}
+        messages = [{"role": "system", "content": system}] + messages
+    kwargs: Dict[str, Any] = {"model": model, "messages": messages}
     if temperature is not None:
-        params["temperature"] = float(temperature)
+        kwargs["temperature"] = float(temperature)
     if max_tokens is not None:
-        params["max_tokens"] = int(max_tokens)
+        kwargs["max_tokens"] = int(max_tokens)
 
     try:
-        resp: Any = client.chat.completions.create(**params)
+        from openai import OpenAI  # type: ignore[import-not-found]
+        client = OpenAI(api_key=api_key) if api_key else OpenAI()  # type: ignore[call-arg]
+        resp: Any = client.chat.completions.create(**kwargs)
         return (resp.choices[0].message.content or "").strip()
-    except Exception as exc:
-        LOGGER.warning("[AI provider] openai call failed: %s; using dummy.", exc)
-        return _dummy_response(question)
+    except Exception as err:  # pragma: no cover - runtime dependent
+        LOGGER.warning("[AI provider] openai v1 Client failed: %s; trying module API.", err)
+        try:
+            import openai as openai_mod  # type: ignore[import-not-found]
+            resp2: Any = openai_mod.chat.completions.create(**kwargs)  # type: ignore[attr-defined]
+            return (resp2.choices[0].message.content or "").strip()
+        except Exception as err2:  # pragma: no cover - runtime dependent
+            LOGGER.warning("OpenAI module API failed: %s; using dummy.", err2)
+            return _dummy_response(question)
 
 
 def _call_anthropic(
@@ -304,7 +357,17 @@ def delta_e(prev_answer: str | None, curr_answer: str) -> float:
     """Return ΔE score via the v4 metric."""
     if prev_answer is None:
         return 0.0
-    return float(_DE.score(prev_answer, curr_answer))
+    if _DE is None:
+        global _DE_WARNED
+        if not _DE_WARNED:
+            LOGGER.warning("ΔE could not be computed (model unavailable).")
+            _DE_WARNED = True
+        return 0.0
+    try:
+        return float(_DE.score(prev_answer, curr_answer))
+    except Exception as exc:  # pragma: no cover - runtime dependent
+        LOGGER.warning("ΔE could not be computed: %s", exc)
+        return 0.0
 
 
 def grv_score(answer: str, *, mode: str = "simple") -> float:
@@ -346,7 +409,7 @@ def run_cycle(
     summary: bool = False,
     jsonl_path: Path | None = None,
     q_provider: str = "openai",
-    ai_provider: str = "openai",
+    ai_provider: str | None = None,
     grv_mode: str = "simple",
 ) -> None:
     """Run the Q&A cycle for ``steps`` iterations and store results.
@@ -361,8 +424,10 @@ def run_cycle(
         When provided, adopted records are also appended to this JSONL file.
     q_provider : str, optional
         Question generation provider (LLM or ``dummy``).
-    ai_provider : str, optional
-        Provider used for answer generation.
+    ai_provider : str | None, optional
+        Provider used for answer generation.  When ``None`` or empty, the
+        environment variable ``AI_PROVIDER`` is consulted, falling back to
+        ``"dummy"``.
     grv_mode : str, optional
         Mode for :func:`core.grv.grv_score`.
     """
@@ -392,12 +457,12 @@ def run_cycle(
         else:
             question = generate_next_question(prev_answer or "", history, q_prov, domain, difficulty)
 
-        answer = get_ai_response(question, provider=provider)
+        if provider == "openai":
+            answer = _call_openai(question, role="answer")
+        else:
+            answer = _dummy_response(question)
         por = por_score(question, history)
-        from core.delta_e_v4 import delta_e_v4
-        de = delta_e_v4(prev_answer or "", answer)
-        if de == 0.0:
-            print("[WARN] \u0394E could not be computed; check inputs.")
+        de = delta_e(prev_answer, answer)
         grv = grv_score(answer, mode=grv_mode)
 
         if not quiet:
@@ -495,7 +560,7 @@ def run_cycle(
 # ---------------------------------------------------------------------------
 
 
-def main(argv: List[str] | None = None) -> None:
+def main(argv: List[str] | None = None) -> int:
     """Command line interface for the collector."""
     # Preload embedding model once
     try:
@@ -587,6 +652,8 @@ def main(argv: List[str] | None = None) -> None:
         ai_provider=args.ai_provider,
         grv_mode=args.grv_mode,
     )
+    # CSV is produced by run_cycle; further ΔE=0 handling/filtering is delegated downstream.
+    return 0 if output_csv.exists() else 1
 
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
@@ -597,4 +664,5 @@ def main(argv: List[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
