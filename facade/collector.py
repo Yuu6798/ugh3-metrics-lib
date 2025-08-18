@@ -562,98 +562,104 @@ def run_cycle(
 
 def main(argv: List[str] | None = None) -> int:
     """Command line interface for the collector."""
-    # Preload embedding model once
+    # Return code: 0 on success; 1 only when exceptions occur.
     try:
-        prefetch_embed_model()
+        try:
+            prefetch_embed_model()
+        except Exception:
+            if os.getenv("DELTAE4_FALLBACK", "").lower() not in ("1", "true", "yes", "hash"):
+                raise
+
+        parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector (ばらつき付き自動生成)")
+        parser.add_argument(
+            "-n",
+            "--steps",
+            type=int,
+            default=50,
+            help="number of cycles with stratified domain/difficulty (default: 50)",
+        )
+        parser.add_argument(
+            "-o",
+            "--output",
+            type=Path,
+            default=Path("por_history.csv"),
+            help="CSV output path",
+        )
+        parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
+        parser.add_argument("--w-por", type=float, help="override W_POR")
+        parser.add_argument("--w-de", type=float, help="override W_DE")
+        parser.add_argument("--w-grv", type=float, help="override W_GRV")
+        parser.add_argument("--adopt-th", type=float, help="override ADOPT_TH")
+        parser.add_argument("--por-w1", type=float, help="hybrid_por_score w1")
+        parser.add_argument("--por-w2", type=float, help="hybrid_por_score w2")
+        parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
+        parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
+        parser.add_argument("--summary", action="store_true", help="print summary at end")
+        parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
+        parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
+        parser.add_argument(
+            "--q-provider",
+            choices=["openai", "anthropic", "gemini", "dummy", "template"],
+            default="openai",
+            help="question generation provider",
+        )
+        parser.add_argument(
+            "--ai-provider",
+            choices=["openai", "anthropic", "gemini", "dummy"],
+            default="openai",
+            help="answer generation provider",
+        )
+        parser.add_argument(
+            "--grv-mode",
+            choices=["simple", "entropy"],
+            default="simple",
+            help="grv score mode",
+        )
+
+        args = parser.parse_args(argv)
+
+        if args.exp_id:
+            exp_id = args.exp_id
+        else:
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
+        output_dir = Path("runs") / exp_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+        # respect -o when it includes a directory or absolute path
+        out = Path(args.output)
+        output_csv = out if out.is_absolute() or out.parent != Path(".") else output_dir / out.name
+        output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
+
+        if args.w_por is not None:
+            globals()["W_POR"] = args.w_por
+        if args.w_de is not None:
+            globals()["W_DE"] = args.w_de
+        if args.w_grv is not None:
+            globals()["W_GRV"] = args.w_grv
+        if args.adopt_th is not None:
+            globals()["ADOPT_TH"] = args.adopt_th
+        if args.por_w1 is not None:
+            globals()["POR_W1"] = args.por_w1
+        if args.por_w2 is not None:
+            globals()["POR_W2"] = args.por_w2
+
+        run_cycle(
+            args.steps,
+            output_csv,
+            interactive=(not args.auto and not args.stdin),
+            stdin_mode=args.stdin,
+            quiet=args.quiet,
+            summary=args.summary,
+            jsonl_path=output_jsonl,
+            q_provider=args.q_provider,
+            ai_provider=args.ai_provider,
+            grv_mode=args.grv_mode,
+        )
+        # CSV is produced by run_cycle; ΔE=0 handling/filtering is delegated downstream.
+        return 0
     except Exception:
-        if os.getenv("DELTAE4_FALLBACK", "").lower() not in ("1", "true", "yes", "hash"):
-            raise
-
-    parser = argparse.ArgumentParser(description="PoR/ΔE/grv collector (ばらつき付き自動生成)")
-    parser.add_argument(
-        "-n",
-        "--steps",
-        type=int,
-        default=50,
-        help="number of cycles with stratified domain/difficulty (default: 50)",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=Path("por_history.csv"),
-        help="CSV output path",
-    )
-    parser.add_argument("--auto", action="store_true", help="run without interactive prompts")
-    parser.add_argument("--w-por", type=float, help="override W_POR")
-    parser.add_argument("--w-de", type=float, help="override W_DE")
-    parser.add_argument("--w-grv", type=float, help="override W_GRV")
-    parser.add_argument("--adopt-th", type=float, help="override ADOPT_TH")
-    parser.add_argument("--por-w1", type=float, help="hybrid_por_score w1")
-    parser.add_argument("--por-w2", type=float, help="hybrid_por_score w2")
-    parser.add_argument("--quiet", action="store_true", help="suppress AI responses")
-    parser.add_argument("--stdin", action="store_true", help="consume questions from stdin")
-    parser.add_argument("--summary", action="store_true", help="print summary at end")
-    parser.add_argument("--exp-id", type=str, help="experiment id for output directory")
-    parser.add_argument("--jsonl", action="store_true", help="also write JSONL")
-    parser.add_argument(
-        "--q-provider",
-        choices=["openai", "anthropic", "gemini", "dummy", "template"],
-        default="openai",
-        help="question generation provider",
-    )
-    parser.add_argument(
-        "--ai-provider",
-        choices=["openai", "anthropic", "gemini", "dummy"],
-        default="openai",
-        help="answer generation provider",
-    )
-    parser.add_argument(
-        "--grv-mode",
-        choices=["simple", "entropy"],
-        default="simple",
-        help="grv score mode",
-    )
-
-    args = parser.parse_args(argv)
-
-    if args.exp_id:
-        exp_id = args.exp_id
-    else:
-        ts = time.strftime("%Y%m%d-%H%M%S")
-        exp_id = f"{ts}_q-{args.q_provider}_a-{args.ai_provider}_g-{args.grv_mode}"
-    output_dir = Path("runs") / exp_id
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_csv = output_dir / (args.output.name if isinstance(args.output, Path) else "por_history.csv")
-    output_jsonl = output_dir / "por_history.jsonl" if args.jsonl else None
-
-    if args.w_por is not None:
-        globals()["W_POR"] = args.w_por
-    if args.w_de is not None:
-        globals()["W_DE"] = args.w_de
-    if args.w_grv is not None:
-        globals()["W_GRV"] = args.w_grv
-    if args.adopt_th is not None:
-        globals()["ADOPT_TH"] = args.adopt_th
-    if args.por_w1 is not None:
-        globals()["POR_W1"] = args.por_w1
-    if args.por_w2 is not None:
-        globals()["POR_W2"] = args.por_w2
-
-    run_cycle(
-        args.steps,
-        output_csv,
-        interactive=(not args.auto and not args.stdin),
-        stdin_mode=args.stdin,
-        quiet=args.quiet,
-        summary=args.summary,
-        jsonl_path=output_jsonl,
-        q_provider=args.q_provider,
-        ai_provider=args.ai_provider,
-        grv_mode=args.grv_mode,
-    )
-    # CSV is produced by run_cycle; further ΔE=0 handling/filtering is delegated downstream.
-    return 0 if output_csv.exists() else 1
+        LOGGER.exception("collector failed")
+        return 1
 
 
 # LLM同士で自動進化対話（質問も応答もOpenAI）
@@ -664,5 +670,4 @@ def main(argv: List[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    import sys
-    sys.exit(main())
+    raise SystemExit(main())
