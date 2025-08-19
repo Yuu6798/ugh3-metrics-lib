@@ -84,7 +84,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "runs/${DATE}"
-          python -m facade.collector --auto -n "${STEPS}" --summary -o "runs/${DATE}/cycle.csv"
+          # runpy 由来の二重実行警告が出たら失敗させる
+          python -W "error::RuntimeWarning:runpy" -m facade.collector \
+            --auto -n "${STEPS}" --summary -o "runs/${DATE}/cycle.csv"
           test -s "runs/${DATE}/cycle.csv"
 
       # === ΔE=0 件数を計測（必要なら増し取りの足し前依頼） ===

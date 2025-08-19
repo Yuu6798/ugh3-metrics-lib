@@ -1,4 +1,7 @@
-from .trigger import por_trigger, main_qa_cycle
-from .collector import run_cycle
-
-__all__ = ["por_trigger", "main_qa_cycle", "run_cycle"]
+"""Keep package init side-effect free to avoid runpy double-execution."""
+__all__: list[str] = []
+try:
+    from importlib.metadata import version
+    __version__ = version("ugh3-metrics-lib")
+except Exception:
+    __version__ = "0"
