@@ -1,3 +1,4 @@
+import os
 import subprocess, sys, tempfile, pathlib
 
 def test_cli_single_run() -> None:
@@ -9,6 +10,7 @@ def test_cli_single_run() -> None:
          "--auto", "-n", "1", "--summary", "-o", str(out)],
         capture_output=True,
         text=True,
+        env={**os.environ, "DELTAE4_FALLBACK": "hash"},
     )
     assert cp.returncode == 0, cp.stderr or cp.stdout
     assert out.exists()
