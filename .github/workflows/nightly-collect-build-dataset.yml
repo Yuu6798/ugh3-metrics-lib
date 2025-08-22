@@ -11,9 +11,17 @@ permissions:
 env:
   PYTHON_VERSION: '3.11'
   # Legacy knob kept for backward-compatibility. Prefer COLLECT_STEPS.
-  STEPS: '50'             # [deprecated] not referenced by the script
-  COLLECT_STEPS: '50'     # default number of items to collect per run
+  STEPS: '200'             # [deprecated knob] backward-compat only. Prefer COLLECT_STEPS.
   HF_HOME: ~/.cache/huggingface
+  # 収集件数（collectorが参照）。未設定時は collector ステップが 50 を採用。
+  COLLECT_STEPS: '50'
+  # 監査のしきい値（必要に応じて調整可能）
+  AUDIT_MIN_ROWS: '40'
+  AUDIT_MIN_DOMAINS: '3'
+  AUDIT_MIN_DIFFS: '3'
+  AUDIT_POR_MIN: '0.80'
+  AUDIT_AE_MAX: '0.30'
+  AUDIT_GRV_MIN: '0.60'
   DELTAE4_FALLBACK: '0'  # フォールバックを無効（=埋め込み失敗時は失敗させる）
   # --- LLM (OpenAI) ---------------------------------------------------------
   # NOTE: リポジトリの Secrets に OPENAI_API_KEY を追加してください。
@@ -111,6 +119,28 @@ jobs:
               f.write(f"zeros={zeros}\n")
               f.write(f"total={total}\n")
               f.write(f"col={col}\n")
+          PY
+
+      - name: Audit dataset quality (gate)
+        run: |
+          python - <<'PY'
+          import os
+          from tools.audit_dataset import main
+          csv = f"runs/{os.environ['DATE']}/cycle.csv"
+          out_json = f"runs/{os.environ['DATE']}/audit.json"
+          out_md = f"runs/{os.environ['DATE']}/audit.md"
+          code = main([
+              "--csv", csv,
+              "--json", out_json,
+              "--md", out_md,
+              "--min-rows", os.getenv("AUDIT_MIN_ROWS","40"),
+              "--min-domains", os.getenv("AUDIT_MIN_DOMAINS","3"),
+              "--min-diffs", os.getenv("AUDIT_MIN_DIFFS","3"),
+              "--por-min", os.getenv("AUDIT_POR_MIN","0.80"),
+              "--ae-max", os.getenv("AUDIT_AE_MAX","0.30"),
+              "--grv-min", os.getenv("AUDIT_GRV_MIN","0.60"),
+          ])
+          raise SystemExit(code)
           PY
 
       # （任意）ゼロ分だけ増し取りする場合。スキップしたいならこの step を削除。
