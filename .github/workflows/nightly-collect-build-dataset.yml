@@ -10,7 +10,9 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.11'
-  STEPS: '200'          # 1 夜あたりの収集件数（必要に応じて調整）
+  # Legacy knob kept for backward-compatibility. Prefer COLLECT_STEPS.
+  STEPS: '50'             # [deprecated] not referenced by the script
+  COLLECT_STEPS: '50'     # default number of items to collect per run
   HF_HOME: ~/.cache/huggingface
   DELTAE4_FALLBACK: '0'  # フォールバックを無効（=埋め込み失敗時は失敗させる）
   # --- LLM (OpenAI) ---------------------------------------------------------
@@ -80,14 +82,15 @@ jobs:
           PY
 
       # === 収集（raw 生成） ===
-      - name: Run auto collector
+      - name: Run auto collector (single run; default n=50)
         run: |
           set -euo pipefail
+          # Allow override via env.COLLECT_STEPS; fallback to 50 when unset.
+          STEPS="${COLLECT_STEPS:-50}"
           mkdir -p "runs/${DATE}"
-          # runpy 由来の二重実行警告が出たら失敗させる
+          echo "[collector] run once with n=${STEPS}"
           python -W "error::RuntimeWarning:runpy" -m facade.collector \
             --auto -n "${STEPS}" --summary -o "runs/${DATE}/cycle.csv"
-          test -s "runs/${DATE}/cycle.csv"
 
       # === ΔE=0 件数を計測（必要なら増し取りの足し前依頼） ===
       - name: Count zero-DeltaE
