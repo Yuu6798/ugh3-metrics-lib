@@ -1,5 +1,8 @@
 import os
-import subprocess, sys, tempfile, pathlib
+import pathlib
+import subprocess
+import sys
+import tempfile
 
 def test_cli_single_run() -> None:
     out = pathlib.Path(tempfile.gettempdir()) / "cycle_test.csv"
