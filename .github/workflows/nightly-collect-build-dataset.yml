@@ -10,11 +10,9 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.11'
-  # Legacy knob kept for backward-compatibility. Prefer COLLECT_STEPS.
-  STEPS: '200'             # [deprecated knob] backward-compat only. Prefer COLLECT_STEPS.
-  HF_HOME: ~/.cache/huggingface
-  # 収集件数（collectorが参照）。未設定時は collector ステップが 50 を採用。
+  # 収集件数（collector が参照）。未設定時は collector 側で 50 を採用。
   COLLECT_STEPS: '50'
+  HF_HOME: ~/.cache/huggingface
   # 監査のしきい値（必要に応じて調整可能）
   AUDIT_MIN_ROWS: '40'
   AUDIT_MIN_DOMAINS: '3'
@@ -91,12 +89,15 @@ jobs:
 
       # === 収集（raw 生成） ===
       - name: Run auto collector (single run; default n=50)
+        shell: bash
         run: |
           set -euo pipefail
-          # Allow override via env.COLLECT_STEPS; fallback to 50 when unset.
-          STEPS="${COLLECT_STEPS:-50}"
+          # Allow override via env.COLLECT_STEPS; fallback to 50 when unset (pure bash expansion).
+          STEPS=${COLLECT_STEPS:-50}
+          echo "::notice title=Collector steps::n=${STEPS}"
           mkdir -p "runs/${DATE}"
           echo "[collector] run once with n=${STEPS}"
+          # Guard against runpy double-execution.
           python -W "error::RuntimeWarning:runpy" -m facade.collector \
             --auto -n "${STEPS}" --summary -o "runs/${DATE}/cycle.csv"
 
@@ -126,19 +127,16 @@ jobs:
           python - <<'PY'
           import os
           from tools.audit_dataset import main
-          csv = f"runs/{os.environ['DATE']}/cycle.csv"
-          out_json = f"runs/{os.environ['DATE']}/audit.json"
-          out_md = f"runs/{os.environ['DATE']}/audit.md"
           code = main([
-              "--csv", csv,
-              "--json", out_json,
-              "--md", out_md,
-              "--min-rows", os.getenv("AUDIT_MIN_ROWS","40"),
-              "--min-domains", os.getenv("AUDIT_MIN_DOMAINS","3"),
-              "--min-diffs", os.getenv("AUDIT_MIN_DIFFS","3"),
-              "--por-min", os.getenv("AUDIT_POR_MIN","0.80"),
-              "--ae-max", os.getenv("AUDIT_AE_MAX","0.30"),
-              "--grv-min", os.getenv("AUDIT_GRV_MIN","0.60"),
+            "--csv", f"runs/{os.environ['DATE']}/cycle.csv",
+            "--json", f"runs/{os.environ['DATE']}/audit.json",
+            "--md",   f"runs/{os.environ['DATE']}/audit.md",
+            "--min-rows",    os.getenv("AUDIT_MIN_ROWS", "40"),
+            "--min-domains", os.getenv("AUDIT_MIN_DOMAINS", "3"),
+            "--min-diffs",   os.getenv("AUDIT_MIN_DIFFS", "3"),
+            "--por-min",     os.getenv("AUDIT_POR_MIN", "0.80"),
+            "--ae-max",      os.getenv("AUDIT_AE_MAX", "0.30"),
+            "--grv-min",     os.getenv("AUDIT_GRV_MIN", "0.60"),
           ])
           raise SystemExit(code)
           PY
@@ -149,8 +147,10 @@ jobs:
         run: |
           set -euo pipefail
           EXTRA=${{ steps.zerochk.outputs.zeros }}
-          echo "Top-off ${EXTRA} rows to replace zero-ΔE records…"
-          python -m facade.collector --auto -n "${EXTRA}" --summary -o "runs/${DATE}/cycle_extra.csv"
+          echo "Top-off ${EXTRA} rows to replace zero-ΔE records (guarded single run)..."
+          python -W "error::RuntimeWarning:runpy" \
+            -m facade.collector --auto -n "${EXTRA}" --summary \
+            -o "runs/${DATE}/cycle_extra.csv"
 
       # === データセット生成（ΔE=0 を除去） ===
       - name: Build dataset (filter ΔE==0)
@@ -205,13 +205,25 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # コミット対象が存在する時だけ add-and-commit を実行するガード
+      - name: Detect files to commit
+        id: git_dirty
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATE="${DATE}"
+          git add -N "runs/${DATE}" "datasets/${DATE}" || true
+          if [ -n "$(git status --porcelain -- runs/${DATE} datasets/${DATE} || true)" ]; then
+            echo "dirty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dirty=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # （任意）data ブランチへコミットしたい場合
       - name: Commit to data branch (optional)
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ steps.git_dirty.outputs.dirty == 'true' && github.event_name != 'pull_request' }}
         uses: EndBug/add-and-commit@v9
         with:
-          add: |
-            runs/${{ env.DATE }}/*
-            datasets/${{ env.DATE }}/*
-          message: "dataset: ${{ env.DATE }} kept=${{ steps.buildset.outputs.kept }} removed_zero=${{ steps.buildset.outputs.removed }}"
+          add: "runs/${{ env.DATE }} datasets/${{ env.DATE }}"
+          message: "dataset: ${{ env.DATE }}"
           new_branch: "data"

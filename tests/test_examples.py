@@ -9,7 +9,8 @@ matplotlib.use("Agg")
 os.environ.setdefault("DELTAE4_FALLBACK", "hash")
 
 import phase_map_demo  # noqa: E402
-import facade.collector  # noqa: E402
+# 内部実装への直接 import は避ける（公開 API のみ）
+from facade import collector_main, run_cycle  # noqa: E402
 import secl.qa_cycle  # noqa: E402
 
 
@@ -20,7 +21,7 @@ def test_import_example_modules() -> None:
 def test_scripts_run(tmp_path: Path) -> None:
     (tmp_path / "datasets").mkdir(parents=True, exist_ok=True)
     phase_map_demo.main()
-    facade.collector.main([
+    collector_main([
         "--auto",
         "-n",
         "1",
@@ -33,7 +34,7 @@ def test_scripts_run(tmp_path: Path) -> None:
 def test_run_cycle_generates_csv(tmp_path: Path) -> None:
     """run_cycle should create a CSV with expected columns and rows."""
     os.environ.setdefault("DELTAE4_FALLBACK", "hash")
-    from facade.collector import run_cycle
+    # run_cycle は上の公開 API から import 済み
     from utils.config_loader import CONFIG
 
     (tmp_path / "datasets").mkdir(parents=True, exist_ok=True)
