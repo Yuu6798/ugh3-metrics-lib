@@ -205,6 +205,30 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # --- 論文用レポート生成（質問単位集計） --------------------------------------
+      - name: Build paper report (question-level)
+        run: |
+          python - <<'PY'
+          import os, pathlib
+          from tools.paper_report import main
+          date = os.environ["DATE"]
+          out = f"reports/{date}"
+          pathlib.Path(out).mkdir(parents=True, exist_ok=True)
+          code = main([
+            "--csv", f"datasets/{date}/dataset.csv",
+            "--outdir", out,
+          ])
+          raise SystemExit(code)
+          PY
+
+      - name: Upload paper report
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-report-${{ env.DATE }}
+          path: reports/${{ env.DATE }}/
+          if-no-files-found: error
+          retention-days: 30
+
       # コミット対象が存在する時だけ add-and-commit を実行するガード
       - name: Detect files to commit
         id: git_dirty
