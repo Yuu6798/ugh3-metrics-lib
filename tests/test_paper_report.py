@@ -3,7 +3,7 @@ import pandas as pd
 from tools.paper_report import to_question_level, compute_row_stats, compute_q_stats
 
 
-def test_question_level_collapse():
+def test_question_level_collapse() -> None:
     df = pd.DataFrame([
         {"question":"Q1","answer":"A","domain":"x","difficulty":"1","por":0.9,"delta_e":0.2,"grv":0.6},
         {"question":"Q1","answer":"B","domain":"x","difficulty":"1","por":0.8,"delta_e":0.1,"grv":0.7},

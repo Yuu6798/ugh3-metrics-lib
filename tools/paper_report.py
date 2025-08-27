@@ -138,7 +138,7 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
         lines += [""]
     # optional plots
     try:
-        import matplotlib.pyplot as plt  # type: ignore
+        import matplotlib.pyplot as plt
         import matplotlib
         matplotlib.use("Agg")
         from math import ceil
