@@ -150,9 +150,9 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
                 ax.hist(s["question_df_cols"][c], bins=20)
                 ax.set_title(label)
         fig.tight_layout()
-        img = path.parent / "hist_question.png"
-        fig.savefig(img, dpi=160)
-        lines += ["## Histograms (question-level)", "", f"![hist_question](hist_question.png)", ""]
+        hist = path.parent / "hist_question.png"
+        fig.savefig(hist, dpi=160)
+        lines += ["## Histograms (question-level)", "", f"![]({hist.name})", ""]
     except Exception as e:
         lines += ["_Note: matplotlib not available; skipped plots._", ""]
     path.parent.mkdir(parents=True, exist_ok=True)
