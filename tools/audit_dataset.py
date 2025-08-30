@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 import pandas as pd
+from tools.stats_common import attach_meta
 
 
 def _float(x: Any, default: float = 0.0) -> float:
@@ -53,7 +54,13 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
-def write_md(path: Path, stats: Dict[str, Any], results: Dict[str, Any], th: Dict[str, float]) -> None:
+def write_md(
+    path: Path,
+    stats: Dict[str, Any],
+    results: Dict[str, Any],
+    th: Dict[str, float],
+    meta: Optional[Dict[str, Any]] = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = []
     lines.append("# Dataset Audit\n")
@@ -73,6 +80,18 @@ def write_md(path: Path, stats: Dict[str, Any], results: Dict[str, Any], th: Dic
     lines.append(f"- ΔE μ ≤ {th['ae_max']} → {'✅' if results['ae_ok'] else '❌'}\n")
     lines.append(f"- grv μ ≥ {th['grv_min']} → {'✅' if results['grv_ok'] else '❌'}\n")
     lines.append(f"\n**Overall:** {'✅ PASS' if results['passed'] else '❌ FAIL'}\n")
+    if meta:
+        lines.append("\n## Meta\n")
+        lines.append(f"- csv: `{meta.get('csv', '')}`")
+        if "counts" in meta:
+            c = meta["counts"]
+            pre = c.get("records_total", "?")
+            kept = c.get("kept", "?")
+            zero = c.get("zeros_removed", "?")
+            lines.append(
+                f"- rows (pre → post): **{pre} → {kept}** (zero-ΔE removed: {zero})"
+            )
+        lines.append(f"- date: {meta.get('date', '')}\n")
     with path.open("w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
@@ -82,6 +101,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--csv", required=True, help="Input CSV path (adopted records).")
     p.add_argument("--json", required=True, help="Output audit JSON path.")
     p.add_argument("--md", required=True, help="Output audit Markdown path.")
+    p.add_argument(
+        "--meta",
+        required=False,
+        default=None,
+        help="Optional meta.json path (to show pre/post counts).",
+    )
     p.add_argument("--min-rows", type=int, default=40)
     p.add_argument("--min-domains", type=int, default=3)
     p.add_argument("--min-diffs", type=int, default=3)
@@ -103,8 +128,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     results = judge(stats, th)
 
     payload = {"stats": stats, "thresholds": th, "results": results}
+    payload = attach_meta(payload, csv=args.csv, meta_path=args.meta)
     write_json(Path(args.json), payload)
-    write_md(Path(args.md), stats, results, th)
+    write_md(Path(args.md), stats, results, th, meta=payload.get("meta"))
 
     # Console summary
     print("== Audit Summary ==")

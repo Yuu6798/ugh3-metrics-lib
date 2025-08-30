@@ -1,13 +1,46 @@
 from __future__ import annotations
+
+import json
+from pathlib import Path
+
 import pandas as pd
-from tools.paper_report import to_question_level, compute_row_stats, compute_q_stats
+from tools.paper_report import (
+    to_question_level,
+    compute_row_stats,
+    compute_q_stats,
+    main as report_main,
+)
 
 
 def test_question_level_collapse() -> None:
     df = pd.DataFrame([
-        {"question":"Q1","answer":"A","domain":"x","difficulty":"1","por":0.9,"delta_e":0.2,"grv":0.6},
-        {"question":"Q1","answer":"B","domain":"x","difficulty":"1","por":0.8,"delta_e":0.1,"grv":0.7},
-        {"question":"Q2","answer":"A","domain":"y","difficulty":"2","por":0.7,"delta_e":0.3,"grv":0.5},
+        {
+            "question": "Q1",
+            "answer": "A",
+            "domain": "x",
+            "difficulty": "1",
+            "por": 0.9,
+            "delta_e": 0.2,
+            "grv": 0.6,
+        },
+        {
+            "question": "Q1",
+            "answer": "B",
+            "domain": "x",
+            "difficulty": "1",
+            "por": 0.8,
+            "delta_e": 0.1,
+            "grv": 0.7,
+        },
+        {
+            "question": "Q2",
+            "answer": "A",
+            "domain": "y",
+            "difficulty": "2",
+            "por": 0.7,
+            "delta_e": 0.3,
+            "grv": 0.5,
+        },
     ])
     rows = compute_row_stats(df)
     assert rows["rows"] == 3
@@ -15,4 +48,40 @@ def test_question_level_collapse() -> None:
     qs = compute_q_stats(dfq)
     assert qs["questions"] == 2
     # mean of Q1(A/B) should be ~0.85 for PoR
-    assert abs(float(dfq[dfq["question"]=="Q1"]["por"]) - 0.85) < 1e-6
+    assert abs(float(dfq[dfq["question"] == "Q1"]["por"]) - 0.85) < 1e-6
+
+
+def test_report_main_with_meta(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "question": "Q1",
+                "answer": "A",
+                "domain": "x",
+                "difficulty": "1",
+                "por": 0.9,
+                "delta_e": 0.2,
+                "grv": 0.6,
+            },
+            {
+                "question": "Q1",
+                "answer": "B",
+                "domain": "x",
+                "difficulty": "1",
+                "por": 0.8,
+                "delta_e": 0.1,
+                "grv": 0.7,
+            },
+        ]
+    )
+    csv = tmp_path / "t.csv"
+    df.to_csv(csv, index=False)
+    meta = {"records_total": 2, "zeros_removed": 0, "kept": 2, "date": "T"}
+    (tmp_path / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    out = tmp_path / "reports"
+    code = report_main(
+        ["--csv", str(csv), "--outdir", str(out), "--meta", str(tmp_path / "meta.json")]
+    )
+    assert code == 0
+    payload = json.loads((out / "paper_stats.json").read_text(encoding="utf-8"))
+    assert payload["meta"]["counts"]["kept"] == 2
