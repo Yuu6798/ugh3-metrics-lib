@@ -85,3 +85,4 @@ def test_report_main_with_meta(tmp_path: Path) -> None:
     assert code == 0
     payload = json.loads((out / "paper_stats.json").read_text(encoding="utf-8"))
     assert payload["meta"]["counts"]["kept"] == 2
+    assert "distributions" in payload and "correlation" in payload and "regression" in payload
