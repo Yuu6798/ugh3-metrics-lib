@@ -4,17 +4,17 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import pandas as pd
 
-from tools.stats_common import pick_col as _pick, float_ as _float_helper, attach_meta
+from tools.stats_common import pick_col as _pick_col_impl, float_ as _float_helper, attach_meta
 
 
 # --- helpers -----------------------------------------------------------------
 def _pick_col(df: pd.DataFrame, cands: Tuple[str, ...]) -> Optional[str]:
     # delegate to shared helper (retain name for backward compatibility)
-    return _pick(df, cands)
+    return _pick_col_impl(df, cands)
 
 
 def _hash_q(text: str) -> str:
@@ -23,6 +23,20 @@ def _hash_q(text: str) -> str:
 
 def _float(x: Any, default: float = 0.0) -> float:
     return _float_helper(x, default)
+
+
+def _pick(v: Any, i: int, key: str) -> float:
+    """coef / se / t が dict でも配列でも取り出せるようにする"""
+    try:
+        if isinstance(v, dict):
+            x = v.get(key, float("nan"))
+        elif isinstance(v, Sequence):
+            x = v[i] if i < len(v) else float("nan")
+        else:
+            return float("nan")
+        return float(x)
+    except Exception:
+        return float("nan")
 
 # --- row-level stats (そのままの行 = A/B 含む) -----------------------------------
 def compute_row_stats(df: pd.DataFrame) -> Dict[str, Any]:
@@ -147,6 +161,42 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
             zero = c.get("zeros_removed", "?")
             lines += [f"- rows (pre → post): **{pre} → {kept}** (zero-ΔE removed: {zero})"]
         lines += [f"- date: {meta.get('date', '')}", ""]
+    reg = s.get("regression", {})
+    if reg:
+        lines += ["## Regression (standardized OLS on question-level): PoR ~ grv + ΔE", ""]
+        r2 = reg.get("r2")
+        adj = reg.get("adj_r2")
+        r2_txt = f"{float(r2):.3f}" if isinstance(r2, (int, float)) else "n/a"
+        adj_txt = f"{float(adj):.3f}" if isinstance(adj, (int, float)) else "n/a"
+        lines += [f"- R²: {r2_txt}   adj.R²: {adj_txt}", ""]
+
+        coef = reg.get("coef", {})
+        se_container = reg.get("se", reg.get("stderr", {}))
+        t_container = reg.get("t", reg.get("tstat", {}))
+        p_any = reg.get("p", None)
+
+        terms = reg.get("columns") or reg.get("colnames") or reg.get("design", [])
+        if not terms and isinstance(coef, dict):
+            terms = list(coef.keys())
+
+        lines += ["| term | beta | se | t | p |",
+                  "|:--|--:|--:|--:|--:|"]
+        for i, term in enumerate(terms):
+            beta_i = _pick(coef,        i, term)
+            se_i   = _pick(se_container,i, term)
+            t_i    = _pick(t_container, i, term)
+            p_i: Optional[float] = None
+            if isinstance(p_any, dict):
+                p_i = p_any.get(term, None)
+            elif isinstance(p_any, Sequence) and i < len(p_any):
+                try:
+                    p_i = float(p_any[i])
+                except Exception:
+                    p_i = None
+            p_txt = f"{p_i:.3g}" if isinstance(p_i, (int, float)) else "n/a"
+
+            lines += [f"| {term} | {beta_i:.3f} | {se_i:.3f} | {t_i:.3f} | {p_txt} |"]
+        lines += [""]
     # domain/difficulty breakdown
     dom = s.get("by_domain_q", {})
     dif = s.get("by_difficulty_q", {})
