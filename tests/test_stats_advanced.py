@@ -3,8 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+import math
 
 from tools.stats_advanced import corr_stats, ols_standardized, series_summary
+from tools.paper_report import _pick
 
 
 def test_series_summary_ci() -> None:
@@ -43,3 +45,20 @@ def test_ols_standardized_smoke() -> None:
     coef = res["coef"]
     assert coef[1] > 0
     assert coef[2] > 0
+
+
+def test_pick_handles_array_and_series() -> None:
+    arr = np.array([1.0, 2.0, 3.0])
+    ser = pd.Series(arr)
+    assert _pick(arr, 1, "") == pytest.approx(2.0)
+    assert _pick(ser, 2, "") == pytest.approx(3.0)
+
+
+def test_pick_series_label_index() -> None:
+    ser = pd.Series([0.1, 0.2, 0.3], index=["x1", "x2", "x3"])
+    assert _pick(ser, i=99, key="x2") == pytest.approx(0.2)
+
+
+def test_pick_non_scalar_from_dict_returns_nan() -> None:
+    val = _pick({"x": np.array([1.0, 2.0])}, i=0, key="x")
+    assert math.isnan(val)
