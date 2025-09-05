@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from tools.stats_common import pick_col as _pick_col_impl, float_ as _float_helper, attach_meta
+from tools.stats_advanced import corr_stats
 
 
 # --- helpers -----------------------------------------------------------------
@@ -194,6 +195,47 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
         f"grv μ (Q): **{ql['grv_mu_q']:.3f}**",
         "",
     ]
+
+    # Correlation section (question-level)
+    qcols = s.get("question_df_cols", {})
+    pairs: list[Tuple[str, str, Dict[str, Any]]] = []
+    por_vals = qcols.get("por")
+    de_vals = qcols.get("delta_e")
+    grv_vals = qcols.get("grv")
+    if por_vals is not None and grv_vals is not None:
+        pairs.append(("PoR", "grv", corr_stats(por_vals, grv_vals)))
+    if por_vals is not None and de_vals is not None:
+        pairs.append(("PoR", "ΔE", corr_stats(por_vals, de_vals)))
+    if pairs:
+        lines += ["## Correlation (question-level)", ""]
+        for xlab, ylab, res in pairs:
+            pr = res.get("pearson", {})
+            sr = res.get("spearman", {})
+
+            def _ci_txt(ci: Tuple[Optional[float], Optional[float]]) -> str:
+                lo, hi = ci
+                if isinstance(lo, float) and isinstance(hi, float):
+                    return f"[{lo:.3f}, {hi:.3f}]"
+                return "n/a"
+
+            pr_ci = _ci_txt(pr.get("ci95", (None, None)))
+            sr_ci = _ci_txt(sr.get("ci95", (None, None)))
+            pr_p = pr.get("p")
+            sr_p = sr.get("p")
+            pr_p_txt = f"{pr_p:.3g}" if isinstance(pr_p, float) else "n/a"
+            sr_p_txt = f"{sr_p:.3g}" if isinstance(sr_p, float) else "n/a"
+            pr_r = pr.get("r")
+            sr_rho = sr.get("rho")
+            pr_r_txt = f"{pr_r:.3f}" if isinstance(pr_r, float) else "n/a"
+            sr_rho_txt = f"{sr_rho:.3f}" if isinstance(sr_rho, float) else "n/a"
+
+            lines += [
+                f"Pearson({xlab}, {ylab}): r={pr_r_txt}, CI95={pr_ci}; p={pr_p_txt}; n={pr.get('n', 0)}"
+            ]
+            lines += [
+                f"Spearman({xlab}, {ylab}): ρ={sr_rho_txt}, CI95={sr_ci}; p={sr_p_txt}; n={sr.get('n', 0)}"
+            ]
+            lines += [""]
     meta = s.get("meta")
     if meta:
         lines += ["## Meta", ""]

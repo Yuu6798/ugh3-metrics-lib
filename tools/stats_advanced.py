@@ -96,18 +96,25 @@ def series_summary(s: pd.Series) -> Dict[str, Any]:
         }
 
 
-def corr_stats(x: Any, y: Any) -> Dict[str, Any]:
+def corr_stats(
+    x: Any,
+    y: Any,
+    *,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Return Pearson and Spearman correlation statistics for *x* and *y*.
 
     The function operates without a SciPy dependency.  When SciPy is
     available, two-sided p-values are included.  Non-finite values are
-    removed pairwise and results fall back to ``None`` on failure.
+    removed pairwise and results fall back to ``None`` on failure.  A
+    bootstrap (with ``seed``) is used to estimate the 95% CI of Spearman's
+    ρ while Pearson's r uses the Fisher z approximation.
     """
 
     def _fail() -> Dict[str, Any]:
         return {
-            "pearson": {"r": None, "p": None, "n": 0},
-            "spearman": {"rho": None, "p": None, "n": 0},
+            "pearson": {"r": None, "p": None, "ci95": (None, None), "n": 0},
+            "spearman": {"rho": None, "p": None, "ci95": (None, None), "n": 0},
         }
 
     try:
@@ -124,9 +131,35 @@ def corr_stats(x: Any, y: Any) -> Dict[str, Any]:
 
         pearson_r = float(np.corrcoef(xv, yv)[0, 1])
 
+        # Pearson CI via Fisher z approximation
+        pearson_ci: Tuple[Optional[float], Optional[float]] = (None, None)
+        if n > 3 and abs(pearson_r) < 1:
+            Z975 = 1.959963984540054  # 97.5th percentile of standard normal
+            z = float(np.arctanh(pearson_r))
+            se = 1.0 / np.sqrt(n - 3)
+            lo = float(np.tanh(z - Z975 * se))
+            hi = float(np.tanh(z + Z975 * se))
+            pearson_ci = (lo, hi)
+
+        # Spearman rho
         x_rank = pd.Series(xv).rank(method="average").to_numpy()
         y_rank = pd.Series(yv).rank(method="average").to_numpy()
         spearman_rho = float(np.corrcoef(x_rank, y_rank)[0, 1])
+
+        # Spearman CI via bootstrap of ranks
+        spearman_ci: Tuple[Optional[float], Optional[float]] = (None, None)
+        if n >= 10:
+            rng = np.random.default_rng(seed)
+            n_boot = 1000
+            idx = rng.integers(0, n, size=(n_boot, n))
+            boots = np.empty(n_boot, dtype=np.float_)
+            for i in range(n_boot):
+                xr = x_rank[idx[i]]
+                yr = y_rank[idx[i]]
+                boots[i] = float(np.corrcoef(xr, yr)[0, 1])
+            slo = float(np.quantile(boots, 0.025))
+            shi = float(np.quantile(boots, 0.975))
+            spearman_ci = (slo, shi)
 
         pearson_p: Optional[float] = None
         spearman_p: Optional[float] = None
@@ -139,8 +172,13 @@ def corr_stats(x: Any, y: Any) -> Dict[str, Any]:
             pass
 
         return {
-            "pearson": {"r": pearson_r, "p": pearson_p, "n": n},
-            "spearman": {"rho": spearman_rho, "p": spearman_p, "n": n},
+            "pearson": {"r": pearson_r, "p": pearson_p, "ci95": pearson_ci, "n": n},
+            "spearman": {
+                "rho": spearman_rho,
+                "p": spearman_p,
+                "ci95": spearman_ci,
+                "n": n,
+            },
         }
     except Exception:
         return _fail()

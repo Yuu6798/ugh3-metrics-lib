@@ -33,6 +33,31 @@ def test_corr_stats() -> None:
     assert out["spearman"]["rho"] > 0.35
 
 
+def test_corr_ci_contains_r() -> None:
+    rng = np.random.default_rng(0)
+    n = 300
+    x = rng.normal(size=n)
+    y = 0.6 * x + rng.normal(scale=0.6, size=n)
+    out = corr_stats(x, y, seed=0)
+    pr = out["pearson"]
+    lo, hi = pr["ci95"]
+    assert lo is not None and hi is not None
+    assert lo < pr["r"] < hi
+    assert -1.0 <= lo <= hi <= 1.0
+
+
+def test_spearman_ci_basic() -> None:
+    rng = np.random.default_rng(1)
+    n = 200
+    x = rng.normal(size=n)
+    y = np.tanh(x) + rng.normal(scale=0.2, size=n)
+    out = corr_stats(x, y, seed=1)
+    sr = out["spearman"]
+    lo, hi = sr["ci95"]
+    assert lo is not None and hi is not None
+    assert hi - lo < 1.0
+
+
 def test_ols_standardized_smoke() -> None:
     rng = np.random.default_rng(0)
     n = 200
