@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple
 
+import numpy as np
 import pandas as pd
 
 from tools.stats_common import pick_col as _pick_col_impl, float_ as _float_helper, attach_meta
@@ -26,15 +27,58 @@ def _float(x: Any, default: float = 0.0) -> float:
 
 
 def _pick(v: Any, i: int, key: str) -> float:
-    """coef / se / t が dict でも配列でも取り出せるようにする"""
+    """Extract a numeric value from mapping/array-like ``v`` by label ``key`` or index ``i``.
+    - dict-like: try label key
+    - pandas.Series: prefer label (loc), else positional (iloc)
+    - numpy.ndarray: positional by i (0-d uses item())
+    - generic array-like: positional by i
+    - otherwise: treat as scalar
+    Non-scalar results are coerced to NaN; failures never raise.
+    """
+
     try:
+        val: Any
+
+        # 1) dict-like (term -> value)
         if isinstance(v, dict):
-            x = v.get(key, float("nan"))
-        elif isinstance(v, Sequence):
-            x = v[i] if i < len(v) else float("nan")
+            val = v.get(key, np.nan)
+
+        # 2) pandas Series (label優先 → 位置)
+        elif isinstance(v, pd.Series):
+            if key in v.index:
+                val = v.loc[key]
+            elif 0 <= i < len(v):
+                val = v.iloc[i]
+            else:
+                val = np.nan
+
+        # 3) numpy ndarray（位置）
+        elif isinstance(v, np.ndarray):
+            if v.ndim == 0:
+                val = v.item()
+            elif 0 <= i < v.shape[0]:
+                val = v[i]
+            else:
+                val = np.nan
+
+        # 4) 配列風（__getitem__ と __len__ を持つ）
+        elif hasattr(v, "__getitem__") and hasattr(v, "__len__"):
+            val = v[i] if 0 <= i < len(v) else np.nan
+
+        # 5) 上記以外はスカラー試行
         else:
+            val = v
+
+        # スカラー化：非スカラー（要素>1）は NaN にフォールバック
+        try:
+            arr = np.asarray(val)
+            if arr.ndim == 0:
+                return float(arr)
+            if arr.size == 1:
+                return float(arr.reshape(()))
             return float("nan")
-        return float(x)
+        except Exception:
+            return float(val)
     except Exception:
         return float("nan")
 
