@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from types import ModuleType
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
-from typing import cast as _cast
+import numpy.typing as npt
 
-try:
-    import scipy.stats as sps  # type: ignore[import-not-found]
-except Exception:
-    sps = None  # type: ignore[assignment]
+# SciPy は任意依存
+sps: ModuleType | None
+try:  # pragma: no cover - optional dependency
+    import scipy.stats as _sps  # type: ignore[import-not-found]
+    sps = _sps
+except Exception:  # pragma: no cover
+    sps = None
 
-FloatArray = NDArray[np.float_]
+# 型エイリアス（数値ベクトル）
+FloatArray = npt.NDArray[np.float_]
 
 
 def _to_numeric(x: Any) -> FloatArray:
@@ -21,7 +25,7 @@ def _to_numeric(x: Any) -> FloatArray:
         arr = pd.to_numeric(x, errors="coerce").dropna().to_numpy(dtype=float)
     else:
         arr = pd.to_numeric(pd.Series(x), errors="coerce").dropna().to_numpy(dtype=float)
-    return _cast(FloatArray, arr)
+    return cast(FloatArray, arr)
 
 
 def bootstrap_ci(
@@ -29,7 +33,7 @@ def bootstrap_ci(
     alpha: float = 0.05,
     n_boot: int = 2000,
     seed: Optional[int] = None,
-) -> tuple[Optional[float], Optional[float]]:
+) -> Tuple[Optional[float], Optional[float]]:
     v = _to_numeric(vals)
     if v.size == 0:
         return (None, None)
@@ -116,8 +120,8 @@ def ols_standardized(
     for c in used:
         mask &= X_raw[c].notna()
 
-    y: FloatArray = _cast(FloatArray, y_raw[mask].to_numpy(dtype=float))
-    X: FloatArray = _cast(FloatArray, X_raw.loc[mask, used].to_numpy(dtype=float))
+    y: FloatArray = cast(FloatArray, y_raw[mask].to_numpy(dtype=float))
+    X: FloatArray = cast(FloatArray, X_raw.loc[mask, used].to_numpy(dtype=float))
     n, px = X.shape if X.size else (0, 0)
     p = px + (1 if add_intercept else 0)
     if n == 0 or n <= p:
@@ -131,7 +135,7 @@ def ols_standardized(
 
     names: List[str] = used.copy()
     if add_intercept:
-        X = _cast(FloatArray, np.column_stack([np.ones(n, dtype=float), X]))
+        X = cast(FloatArray, np.column_stack([np.ones(n, dtype=float), X]))
         names = ["intercept"] + names
 
     beta, *_ = np.linalg.lstsq(X, y, rcond=None)
