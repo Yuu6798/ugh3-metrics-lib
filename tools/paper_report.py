@@ -4,15 +4,16 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
 from tools.stats_common import attach_meta, pick_col as _pick
-from tools.stats_advanced import corr_stats, ols_standardized, series_summary
+from tools.stats_advanced import series_summary, corr_stats, ols_standardized
 
 
-def _pick_col(df: pd.DataFrame, cands: Tuple[str, ...]) -> Optional[str]:
+def _pick_col(df: pd.DataFrame, cands: tuple[str, ...]) -> Optional[str]:
+    """Delegate to shared helper (retain name for backward compatibility)."""
     return _pick(df, cands)
 
 
@@ -105,49 +106,55 @@ def by_category(dfq: pd.DataFrame, key: str) -> Dict[str, Dict[str, float]]:
     return dict(sorted(out.items(), key=lambda x: (-x[1]["count"], x[0])))
 
 
-def write_json(path: Path, data: Dict[str, Any]) -> None:
+def write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
 def write_md(path: Path, payload: Dict[str, Any]) -> None:
     s = payload
     rl, ql = s["row_level"], s["question_level"]
     lines: list[str] = []
-    lines += ["# UGH Dataset — Paper Report", ""]
+    lines += ["# UGH Dataset – Paper Report", ""]
+
+    # Meta (if present)
+    meta = s.get("meta")
+    if meta:
+        lines += ["## Meta", ""]
+        lines += [f"- csv: `{meta.get('csv','')}`"]
+        if "counts" in meta:
+            c = meta["counts"]
+            pre = c.get("records_total", "?")
+            kept = c.get("kept", "?")
+            zero = c.get("zeros_removed", "?")
+            lines += [f"- rows (pre → post): **{pre} → {kept}** (zero-ΔE removed: {zero})"]
+        lines += [f"- date: {meta.get('date','')}", ""]
+
     lines += ["## Totals", ""]
     lines += [f"- Rows (adopted): **{rl['rows']}** / Zero-ΔE rows: **{rl['zero_de']}**"]
     lines += [f"- Questions: **{ql['questions']}**"]
     lines += [f"- Domains: rows **{rl['domains']}**, questions **{ql['domains']}**"]
-    lines += [f"- Difficulties: rows **{rl['difficulties']}**, questions **{ql['difficulties']}**", ""]
+    lines += [
+        f"- Difficulties: rows **{rl['difficulties']}**, questions **{ql['difficulties']}**",
+        "",
+    ]
     lines += ["## Means (row-level)", ""]
-    lines += [f"- PoR μ: **{rl['por_mu']:.3f}**, ΔE μ: **{rl['ae_mu']:.3f}**, grv μ: **{rl['grv_mu']:.3f}**", ""]
+    lines += [
+        f"- PoR μ: **{rl['por_mu']:.3f}**, ΔE μ: **{rl['ae_mu']:.3f}**, grv μ: **{rl['grv_mu']:.3f}**",
+        "",
+    ]
     lines += ["## Means (question-level)", ""]
     lines += [
         f"- PoR μ (Q): **{ql['por_mu_q']:.3f}**, ΔE μ (Q): **{ql['ae_mu_q']:.3f}**, grv μ (Q): **{ql['grv_mu_q']:.3f}**",
         "",
     ]
 
-    meta = s.get("meta")
-    if meta:
-        lines += ["## Meta", ""]
-        lines += [f"- csv: `{meta.get('csv', '')}`"]
-        c = meta.get("counts")
-        if c:
-            pre = c.get("records_total", "?")
-            kept = c.get("kept", "?")
-            zero = c.get("zeros_removed", "?")
-            lines += [f"- rows (pre → post): **{pre} → {kept}** (zero-ΔE removed: {zero})"]
-        lines += [f"- date: {meta.get('date', '')}", ""]
-
+    # Distributions (row & question)
     dist = s.get("distributions", {})
     if dist:
         lines += ["## Distributions (row & question)", ""]
-        lines += [
-            "| level | metric | n | mean | median | IQR | 95% CI (mean) |",
-            "|---|---|---:|---:|---:|---:|---:|",
-        ]
+        lines += ["| level | metric | n | mean | median | IQR | 95% CI (mean) |", "|---|---|---:|---:|---:|---:|---:|"]
         for lvl_key in ("row", "question"):
             lvl = dist.get(lvl_key, {})
             for mkey, summ in lvl.items():
@@ -158,11 +165,10 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
                 med = summ.get("median")
                 iqr = summ.get("iqr")
                 ci = summ.get("ci95") or [None, None]
-                lines += [
-                    f"| {lvl_key} | {mkey} | {n} | {mean:.3f} | {med:.3f} | {iqr:.3f} | [{ci[0]:.3f}, {ci[1]:.3f}] |"
-                ]
+                lines += [f"| {lvl_key} | {mkey} | {n} | {mean:.3f} | {med:.3f} | {iqr:.3f} | [{ci[0]:.3f}, {ci[1]:.3f}] |"]
         lines += [""]
 
+    # Correlation & Regression
     cor = s.get("correlation", {})
     reg = s.get("regression", {})
     if cor:
@@ -170,21 +176,29 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
         if "por_grv" in cor:
             pr = cor["por_grv"]["pearson"]
             sp = cor["por_grv"]["spearman"]
-            lines += [
-                f"- Pearson(PoR, grv): r={pr.get('r'):.3f} (p={pr.get('p') if pr.get('p') is not None else 'n/a'})"
-            ]
-            lines += [
-                f"- Spearman(PoR, grv): ρ={sp.get('rho'):.3f} (p={sp.get('p') if sp.get('p') is not None else 'n/a'})"
-            ]
+            r = pr.get("r")
+            pval = pr.get("p")
+            r_txt = f"{r:.3f}" if r is not None else "n/a"
+            p_txt = f"{pval}" if pval is not None else "n/a"
+            lines += [f"- Pearson(PoR, grv): r={r_txt} (p={p_txt}), n={pr.get('n')}"]
+            rho = sp.get("rho")
+            p_s = sp.get("p")
+            rho_txt = f"{rho:.3f}" if rho is not None else "n/a"
+            ps_txt = f"{p_s}" if p_s is not None else "n/a"
+            lines += [f"- Spearman(PoR, grv): ρ={rho_txt} (p={ps_txt}), n={sp.get('n')}"]
         if "por_de" in cor:
             pr = cor["por_de"]["pearson"]
             sp = cor["por_de"]["spearman"]
-            lines += [
-                f"- Pearson(PoR, ΔE): r={pr.get('r'):.3f} (p={pr.get('p') if pr.get('p') is not None else 'n/a'})"
-            ]
-            lines += [
-                f"- Spearman(PoR, ΔE): ρ={sp.get('rho'):.3f} (p={sp.get('p') if sp.get('p') is not None else 'n/a'})"
-            ]
+            r = pr.get("r")
+            pval = pr.get("p")
+            r_txt = f"{r:.3f}" if r is not None else "n/a"
+            p_txt = f"{pval}" if pval is not None else "n/a"
+            lines += [f"- Pearson(PoR, ΔE): r={r_txt} (p={p_txt}), n={pr.get('n')}"]
+            rho = sp.get("rho")
+            p_s = sp.get("p")
+            rho_txt = f"{rho:.3f}" if rho is not None else "n/a"
+            ps_txt = f"{p_s}" if p_s is not None else "n/a"
+            lines += [f"- Spearman(PoR, ΔE): ρ={rho_txt} (p={ps_txt}), n={sp.get('n')}"]
         lines += [""]
 
     if reg:
@@ -193,18 +207,19 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
         adj = reg.get("adj_r2")
         r2_txt = f"{r2:.3f}" if r2 is not None else "n/a"
         adj_txt = f"{adj:.3f}" if adj is not None else "n/a"
-        lines += [f"- R²={r2_txt}  adj.R²={adj_txt}", ""]
+        lines += [f"- n={reg.get('n')}  R²={r2_txt}  adj.R²={adj_txt}", ""]
         coef = reg.get("coef", {})
         se = reg.get("stderr", {})
-        t = reg.get("t", {})
-        p = reg.get("p", {})
-        lines += ["| term | beta | se | t | p |", "|---|---:|---:|---:|---:|"]
+        pv = reg.get("p", {})
+        lines += ["| term | beta | se | p |", "|---|---:|---:|---:|"]
         for term in reg.get("design", []):
-            lines += [
-                f"| {term} | {coef.get(term, float('nan')):.3f} | {se.get(term, float('nan')):.3f} | {t.get(term, float('nan')):.3f} | {p.get(term, 'n/a')} |"
-            ]
+            if term not in coef:
+                continue
+            pval = pv.get(term)
+            lines += [f"| {term} | {coef[term]:.3f} | {se.get(term, float('nan')):.3f} | {pval if pval is not None else 'n/a'} |"]
         lines += [""]
 
+    # domain/difficulty breakdown
     dom = s.get("by_domain_q", {})
     dif = s.get("by_difficulty_q", {})
     if dom:
@@ -222,9 +237,9 @@ def write_md(path: Path, payload: Dict[str, Any]) -> None:
 
     try:
         import matplotlib
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt  # type: ignore
 
-        matplotlib.use("Agg")
         fig, axes = plt.subplots(1, 3, figsize=(9, 3))
         cols = [("por", "PoR"), ("delta_e", "AE"), ("grv", "grv")]
         for ax, (c, label) in zip(axes, cols):
