@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, TypeAlias, cast
+from typing import Any, Dict, List, Optional, Tuple, TypeAlias, cast
 
 import numpy as np
 import pandas as pd
@@ -93,4 +93,131 @@ def series_summary(s: pd.Series) -> Dict[str, Any]:
             "q3": None,
             "iqr": None,
             "ci95": (None, None),
+        }
+
+
+def corr_stats(x: Any, y: Any) -> Dict[str, Any]:
+    """Return Pearson and Spearman correlation statistics for *x* and *y*.
+
+    The function operates without a SciPy dependency.  When SciPy is
+    available, two-sided p-values are included.  Non-finite values are
+    removed pairwise and results fall back to ``None`` on failure.
+    """
+
+    def _fail() -> Dict[str, Any]:
+        return {
+            "pearson": {"r": None, "p": None, "n": 0},
+            "spearman": {"rho": None, "p": None, "n": 0},
+        }
+
+    try:
+        x_arr = np.asarray(x, dtype=np.float_).reshape(-1)
+        y_arr = np.asarray(y, dtype=np.float_).reshape(-1)
+        if x_arr.size != y_arr.size or x_arr.size == 0:
+            return _fail()
+        mask = np.isfinite(x_arr) & np.isfinite(y_arr)
+        xv = x_arr[mask]
+        yv = y_arr[mask]
+        n = int(xv.size)
+        if n < 2:
+            return _fail()
+
+        pearson_r = float(np.corrcoef(xv, yv)[0, 1])
+
+        x_rank = pd.Series(xv).rank(method="average").to_numpy()
+        y_rank = pd.Series(yv).rank(method="average").to_numpy()
+        spearman_rho = float(np.corrcoef(x_rank, y_rank)[0, 1])
+
+        pearson_p: Optional[float] = None
+        spearman_p: Optional[float] = None
+        try:  # SciPy is optional
+            from scipy import stats
+
+            pearson_p = float(stats.pearsonr(xv, yv)[1])
+            spearman_p = float(stats.spearmanr(xv, yv)[1])
+        except Exception:
+            pass
+
+        return {
+            "pearson": {"r": pearson_r, "p": pearson_p, "n": n},
+            "spearman": {"rho": spearman_rho, "p": spearman_p, "n": n},
+        }
+    except Exception:
+        return _fail()
+
+
+def ols_standardized(
+    df: pd.DataFrame,
+    y_col: str,
+    x_cols: List[str],
+    *,
+    add_intercept: bool = True,
+    standardize: bool = True,
+) -> Dict[str, Any]:
+    """Fit an OLS model optionally standardizing the design matrix.
+
+    Parameters mimic a tiny subset of what StatsModels would provide but
+    avoid any dependency on external libraries beyond NumPy/Pandas.
+    ``standardize`` Z-scores the columns in ``x_cols``.  When SciPy is
+    available, two-sided p-values for the t statistics are reported,
+    otherwise ``p`` is ``None``.
+    """
+
+    try:
+        y = df[y_col].to_numpy(dtype=np.float_)
+        X = df[x_cols].to_numpy(dtype=np.float_)
+        if standardize:
+            mean = np.mean(X, axis=0)
+            std = np.std(X, axis=0, ddof=0)
+            std[std == 0] = 1
+            X = (X - mean) / std
+        colnames: List[str] = list(x_cols)
+        if add_intercept:
+            X = np.column_stack([np.ones(len(df), dtype=np.float_), X])
+            colnames = ["intercept"] + colnames
+
+        beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+        y_hat = X @ beta
+        resid = y - y_hat
+        n = int(y.shape[0])
+        p = int(X.shape[1])
+        dof = max(n - p, 1)
+        rss = float(resid @ resid)
+        mse = rss / dof
+        XtX_inv = np.linalg.inv(X.T @ X)
+        se = np.sqrt(np.diag(mse * XtX_inv))
+        t_stats = beta / se
+        ss_tot = float(np.sum((y - np.mean(y)) ** 2))
+        r2 = 1 - rss / ss_tot if ss_tot > 0 else 0.0
+        adj_r2 = 1 - (1 - r2) * (n - 1) / (n - p) if n > p else 0.0
+
+        p_vals: Optional[NDArray[np.float_]] = None
+        try:
+            from scipy import stats
+
+            p_vals = 2 * stats.t.sf(np.abs(t_stats), dof)
+            p_vals = p_vals.astype(float)
+        except Exception:
+            pass
+
+        return {
+            "coef": beta,
+            "se": se,
+            "t": t_stats,
+            "p": p_vals,
+            "colnames": colnames,
+            "r2": float(r2),
+            "adj_r2": float(adj_r2),
+            "n": n,
+        }
+    except Exception:
+        return {
+            "coef": np.array([], dtype=np.float_),
+            "se": np.array([], dtype=np.float_),
+            "t": np.array([], dtype=np.float_),
+            "p": None,
+            "colnames": [],
+            "r2": None,
+            "adj_r2": None,
+            "n": 0,
         }
