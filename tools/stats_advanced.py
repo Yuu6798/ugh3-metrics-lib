@@ -107,8 +107,9 @@ def corr_stats(
     The function operates without a SciPy dependency.  When SciPy is
     available, two-sided p-values are included.  Non-finite values are
     removed pairwise and results fall back to ``None`` on failure.  A
-    bootstrap (with ``seed``) is used to estimate the 95% CI of Spearman's
-    ρ while Pearson's r uses the Fisher z approximation.
+    bootstrap (with ``seed``) re-ranking the data within each resample is
+    used to estimate the 95% CI of Spearman's ρ while Pearson's r uses the
+    Fisher z approximation.
     """
 
     def _fail() -> Dict[str, Any]:
@@ -146,20 +147,25 @@ def corr_stats(
         y_rank = pd.Series(yv).rank(method="average").to_numpy()
         spearman_rho = float(np.corrcoef(x_rank, y_rank)[0, 1])
 
-        # Spearman CI via bootstrap of ranks
+        # Spearman CI via bootstrap (re-rank within each resample)
         spearman_ci: Tuple[Optional[float], Optional[float]] = (None, None)
         if n >= 10:
             rng = np.random.default_rng(seed)
             n_boot = 1000
-            idx = rng.integers(0, n, size=(n_boot, n))
             boots = np.empty(n_boot, dtype=np.float_)
-            for i in range(n_boot):
-                xr = x_rank[idx[i]]
-                yr = y_rank[idx[i]]
-                boots[i] = float(np.corrcoef(xr, yr)[0, 1])
-            slo = float(np.quantile(boots, 0.025))
-            shi = float(np.quantile(boots, 0.975))
-            spearman_ci = (slo, shi)
+            for b in range(n_boot):
+                idx = rng.integers(0, n, size=n)
+                xr = pd.Series(xv[idx]).rank(method="average").to_numpy()
+                yr = pd.Series(yv[idx]).rank(method="average").to_numpy()
+                if xr.std(ddof=0) == 0.0 or yr.std(ddof=0) == 0.0:
+                    boots[b] = np.nan
+                else:
+                    boots[b] = float(np.corrcoef(xr, yr)[0, 1])
+            valids = boots[np.isfinite(boots)]
+            if valids.size >= 30:
+                slo = float(np.quantile(valids, 0.025))
+                shi = float(np.quantile(valids, 0.975))
+                spearman_ci = (slo, shi)
 
         pearson_p: Optional[float] = None
         spearman_p: Optional[float] = None

@@ -58,6 +58,22 @@ def test_spearman_ci_basic() -> None:
     assert hi - lo < 1.0
 
 
+def test_spearman_ci_rerank_bootstrap_handles_ties() -> None:
+    rng = np.random.default_rng(0)
+    n = 120
+    x = np.concatenate([
+        np.zeros(n // 3),
+        np.ones(n // 3),
+        2 * np.ones(n - 2 * (n // 3)),
+    ])
+    y = x + 0.2 * rng.normal(size=n)
+    out = corr_stats(x, y, seed=1)
+    lo, hi = out["spearman"]["ci95"]
+    assert lo is not None and hi is not None
+    assert -1.0 <= lo <= hi <= 1.0
+    assert (hi - lo) > 0.01
+
+
 def test_ols_standardized_smoke() -> None:
     rng = np.random.default_rng(0)
     n = 200
