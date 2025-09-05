@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple
 
+import numpy as np
 import pandas as pd
 
 from tools.stats_common import pick_col as _pick_col_impl, float_ as _float_helper, attach_meta
@@ -30,7 +31,11 @@ def _pick(v: Any, i: int, key: str) -> float:
     try:
         if isinstance(v, dict):
             x = v.get(key, float("nan"))
+        elif isinstance(v, (np.ndarray, pd.Series)):
+            x = v[i] if i < len(v) else float("nan")
         elif isinstance(v, Sequence):
+            x = v[i] if i < len(v) else float("nan")
+        elif hasattr(v, "__len__") and hasattr(v, "__getitem__"):
             x = v[i] if i < len(v) else float("nan")
         else:
             return float("nan")

@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from tools.stats_advanced import corr_stats, ols_standardized, series_summary
+from tools.paper_report import _pick
 
 
 def test_series_summary_ci() -> None:
@@ -43,3 +44,10 @@ def test_ols_standardized_smoke() -> None:
     coef = res["coef"]
     assert coef[1] > 0
     assert coef[2] > 0
+
+
+def test_pick_handles_array_like() -> None:
+    arr = np.array([1.0, 2.0, 3.0])
+    ser = pd.Series([4.0, 5.0, 6.0])
+    assert _pick(arr, 1, "coef") == pytest.approx(2.0)
+    assert _pick(ser, 2, "coef") == pytest.approx(6.0)
