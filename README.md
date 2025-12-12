@@ -82,7 +82,7 @@ python facade/collector.py \
 
 ```bash
 python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai \
-  --quiet --summary -o runs/demo_por_history.csv
+  --quiet --summary --output runs/demo_por_history.csv --por --delta_e --grv
 ```
 
 ## Metric definitions / コア定義（canonical）
