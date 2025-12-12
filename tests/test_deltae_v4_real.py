@@ -5,6 +5,8 @@ import pytest
 import ugh3_metrics.metrics.deltae_v4 as dmod
 from ugh3_metrics.metrics.deltae_v4 import DeltaE4
 
+# mypy: disable-error-code=unused-ignore
+
 
 class StubEmbedder:
     def encode(self, text: str) -> list[float]:
@@ -20,7 +22,7 @@ def test_real_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
     assert abs(metric.score("A", "B")) > 0
 
 
-@pytest.mark.xfail(reason="no network", strict=True)  # type: ignore[misc]  # pytest decorator lacks typing
+@pytest.mark.xfail(reason="no network", strict=True)  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
 def test_no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HF_DATASETS_OFFLINE", "1")
     from ugh3_metrics.metrics.deltae_v4 import DeltaE4 as _DE

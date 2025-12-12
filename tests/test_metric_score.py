@@ -1,9 +1,11 @@
 from typing import Any
 
+# mypy: disable-error-code=unused-ignore
+
 import pytest
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]  # pytest decorator lacks typing
+@pytest.mark.parametrize(  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
     "text_a,text_b",
     [
         ("alpha beta", "gamma"),

@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 import pytest
 
+# mypy: disable-error-code=unused-ignore
+
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "datasets" / "current_recalc.parquet"
 
 
-@pytest.mark.skipif(  # type: ignore[misc]  # pytest decorator lacks typing
+@pytest.mark.skipif(  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
     not DATA_PATH.exists(),
     reason="datasets/current_recalc.parquet not available",
 )
