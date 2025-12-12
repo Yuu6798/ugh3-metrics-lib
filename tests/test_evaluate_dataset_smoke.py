@@ -21,7 +21,7 @@ def make_df(kind: str, rows: int) -> pd.DataFrame:
     })
 
 
-@pytest.mark.parametrize("kind,rows,expected", [("good", 1200, 0), ("bad", 1200, 2)])  # type: ignore[misc]
+@pytest.mark.parametrize("kind,rows,expected", [("good", 1200, 0), ("bad", 1200, 2)])  # type: ignore[misc]  # pytest decorator lacks typing
 def test_evaluate_dataset_smoke(tmp_path: Path, kind: str, rows: int, expected: int) -> None:
     df = make_df(kind, rows)
     infile = tmp_path / "in.parquet"

@@ -7,7 +7,7 @@ import pytest
 DATA_PATH = Path(__file__).resolve().parents[1] / "datasets" / "current_recalc.parquet"
 
 
-@pytest.mark.skipif(  # type: ignore[misc]
+@pytest.mark.skipif(  # type: ignore[misc]  # pytest decorator lacks typing
     not DATA_PATH.exists(),
     reason="datasets/current_recalc.parquet not available",
 )

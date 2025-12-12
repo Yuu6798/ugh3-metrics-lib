@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(  # type: ignore[misc]  # pytest decorator lacks typing
     "text_a,text_b",
     [
         ("alpha beta", "gamma"),
