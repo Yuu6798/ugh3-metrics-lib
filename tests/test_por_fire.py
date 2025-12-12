@@ -2,14 +2,16 @@ import pytest
 
 from core.metrics import POR_FIRE_THRESHOLD, is_por_fire
 
+# mypy: disable-error-code=unused-ignore
 
-@pytest.mark.parametrize(
+
+@pytest.mark.parametrize(  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
     "score,expected",
     [
         (0.81, False),
         (POR_FIRE_THRESHOLD, True),
         (0.95, True),
     ],
-)  # type: ignore[misc]
+)
 def test_is_por_fire(score: float, expected: bool) -> None:
     assert is_por_fire(score) is expected

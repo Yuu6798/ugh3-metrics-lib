@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# mypy: disable-error-code=unused-ignore
+
 
 def make_df(kind: str, rows: int) -> pd.DataFrame:
     groups = np.random.choice([True, False], size=rows, p=[0.25, 0.75])
@@ -21,7 +23,7 @@ def make_df(kind: str, rows: int) -> pd.DataFrame:
     })
 
 
-@pytest.mark.parametrize("kind,rows,expected", [("good", 1200, 0), ("bad", 1200, 2)])  # type: ignore[misc]
+@pytest.mark.parametrize("kind,rows,expected", [("good", 1200, 0), ("bad", 1200, 2)])  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
 def test_evaluate_dataset_smoke(tmp_path: Path, kind: str, rows: int, expected: int) -> None:
     df = make_df(kind, rows)
     infile = tmp_path / "in.parquet"

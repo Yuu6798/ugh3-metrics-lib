@@ -5,6 +5,8 @@ import pytest
 import numpy as np
 from numpy.typing import NDArray
 
+# mypy: disable-error-code=unused-ignore
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from typing import cast
@@ -19,11 +21,11 @@ class DummyEmbedder:
         return np.array([n, 0.0], dtype=float)
 
 
-@pytest.fixture(scope="session")  # type: ignore[misc]
+@pytest.fixture(scope="session")  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
 def dummy_emb() -> DummyEmbedder:
     return DummyEmbedder()
 
 
-@pytest.fixture(params=[PorV4, GrvV4])  # type: ignore[misc]
+@pytest.fixture(params=[PorV4, GrvV4])  # type: ignore[misc,untyped-decorator]  # pytest decorator lacks typing
 def metric_cls(request: pytest.FixtureRequest) -> type:
     return cast(type, request.param)
