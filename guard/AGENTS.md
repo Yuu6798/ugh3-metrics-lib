@@ -71,9 +71,9 @@ guard/
 
 All commands run from the `guard/` directory:
 
-- Install: `cd guard && pip install -e ".[dev]"`
-- Test: `cd guard && pytest tests/ -v`
-- CLI: `cd guard && python -m ughp_guard.cli audit --task task.txt --response response.txt`
+- Install: `pip install -e ".[dev]"`
+- Test: `pytest tests/ -v`
+- CLI: `python -m ughp_guard.cli audit --task task.txt --response response.txt`
 
 ## Coding Conventions
 
