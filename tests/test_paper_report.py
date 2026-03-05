@@ -48,7 +48,9 @@ def test_question_level_collapse() -> None:
     qs = compute_q_stats(dfq)
     assert qs["questions"] == 2
     # mean of Q1(A/B) should be ~0.85 for PoR
-    assert abs(float(dfq[dfq["question"] == "Q1"]["por"]) - 0.85) < 1e-6
+    q1_por = dfq.loc[dfq["question"] == "Q1", "por"]
+    assert len(q1_por) == 1
+    assert abs(float(q1_por.iloc[0]) - 0.85) < 1e-6
 
 
 def test_report_main_with_meta(tmp_path: Path) -> None:
