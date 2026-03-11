@@ -63,7 +63,7 @@ from ugh3_metrics.metrics import DeltaE4
 de = DeltaE4()
 score = de.score("previous answer", "current answer")  # returns float in [0, 1]
 ```
-- Computes `1 - cosine_similarity(embed(a), embed(b))`, clipped to [0, 1].
+- Computes `round(1.0 - cosine_similarity(embed(a), embed(b)), 3)`; output range is [0.0, 2.0] (not clipped — identical inputs return 0.0, opposite vectors return 2.0).
 - Lazy-loads sentence-transformers on first call.
 - Set `DELTAE4_FALLBACK=hash` environment variable to use hash-based approximation (no model needed).
 - Raises `RuntimeError` if embedding fails outside fallback mode.
@@ -76,7 +76,8 @@ score = grv.score("text", "")  # second arg unused; returns float in [0, 1]
 ```
 - Weighted composite: TF-IDF top-k (0.50) + entropy (0.30) + PMI co-occurrence (0.20).
 - Sigmoid-normalized output.
-- Weights are configurable via `config/grv.yaml` or `set_params(weights={...})`.
+- Weights are configurable via `config/grv.yaml` or `set_params(weights=[0.50, 0.30, 0.20])`.
+- `set_params` expects an **iterable of floats** (list/tuple in `[tfidf, pmi, entropy]` order); passing a dict will raise a `ValueError` because dict keys are strings and cannot be cast to `float`.
 
 ### SciV4 — Science Score
 ```python
@@ -202,11 +203,11 @@ CI runs on Python 3.12. The shared `.github/actions/setup-deps/action.yml` insta
 
 ### `config/grv.yaml` — GRV weights
 ```yaml
-weights:
-  tfidf: 0.50
-  entropy: 0.30
-  cooccurrence: 0.20
+tfidf: 0.50
+entropy: 0.30
+cooccurrence: 0.20
 ```
+Keys are at the **top level** (no nesting). `load_grv_weights()` reads `data.get("tfidf", ...)` directly; a nested `weights:` key would be silently ignored and defaults used.
 
 ### `facade/collector.py` — Integration constants
 - `W_POR = 0.4`, `W_DE = 0.4`, `W_GRV = 0.2` — composite score weights
