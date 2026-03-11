@@ -74,7 +74,8 @@ from ugh3_metrics.metrics import GrvV4
 grv = GrvV4()
 score = grv.score("text", "")  # second arg unused; returns float in [0, 1]
 ```
-- Weighted composite: TF-IDF top-k (0.50) + entropy (0.30) + PMI co-occurrence (0.20).
+- Weighted composite: TF-IDF top-k (0.50) + PMI co-occurrence (0.30) + entropy (0.20).
+- Note: `load_grv_weights()` returns `(tfidf, entropy, cooccurrence)` from YAML, but `score()` applies weights in `[tfidf, pmi, entropy]` order — so the YAML `entropy` key (0.30) maps to the PMI component and `cooccurrence` (0.20) maps to the entropy component.
 - Sigmoid-normalized output.
 - Weights are configurable via `config/grv.yaml` or `set_params(weights=[0.50, 0.30, 0.20])`.
 - `set_params` expects an **iterable of floats** (list/tuple in `[tfidf, pmi, entropy]` order); passing a dict will raise a `ValueError` because dict keys are strings and cannot be cast to `float`.
@@ -150,7 +151,7 @@ All workflows are in `.github/workflows/`.
 | `unified-ai-issue-to-pr.yml` | issue events | AI-powered issue → code → PR automation |
 | `secret-smoke.yml` | `workflow_dispatch` (manual) | Security validation for secrets |
 
-CI runs on Python 3.12. The shared `.github/actions/setup-deps/action.yml` installs all dependencies.
+`ci.yml` runs on Python 3.12. `typecheck.yml`, `nightly-collect-build-dataset.yml`, and `unified-ai-issue-to-pr.yml` all run on Python 3.11. The shared `.github/actions/setup-deps/action.yml` installs all dependencies.
 
 **Required secrets for AI workflows**: `OPENAI_API_KEY`, `PAT_TOKEN`.
 
