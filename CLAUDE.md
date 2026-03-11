@@ -55,7 +55,7 @@ score = por.score("query text", "reference text")  # returns float in [0, 1]
 - Uses `all-MiniLM-L6-v2` via sentence-transformers by default.
 - Falls back to a simple token-count embedder (`SimpleEmbedder`) if the model is unavailable.
 - Normalizes via sigmoid: `1 / (1 + exp(-(13.2 * sim - 10.8)))`.
-- Fire threshold (from `config.json`): `POR_FIRE_THRESHOLD = 0.82`.
+- Fire threshold: `POR_FIRE_THRESHOLD = 0.82` hardcoded in `core/metrics.py`; `config.json` does not contain this key.
 
 ### DeltaE4 — Delta E
 ```python
@@ -123,13 +123,18 @@ make recalc IN=data/old.csv OUT=data/new.parquet
 
 ### CLI usage (facade)
 ```bash
-# Collect metrics from CSV input
-python facade/collector.py --input prompts.csv --output out.json --por --delta_e --grv
-
-# Auto mode with OpenAI provider
+# Auto mode: run 10 cycles, write CSV output
 python facade/collector.py --auto -n 10 --q-provider openai --ai-provider openai \
-  --quiet --summary --output runs/metrics.csv --por --delta_e --grv
+  --quiet --summary --output runs/metrics.csv
+
+# Read questions from stdin
+python facade/collector.py --stdin --output runs/metrics.csv --quiet --summary
 ```
+
+Key flags: `-n`/`--steps` (cycle count), `-o`/`--output` (CSV path), `--auto`,
+`--q-provider` (openai|anthropic|gemini|dummy|template), `--ai-provider` (openai|anthropic|gemini|dummy),
+`--grv-mode` (simple|entropy), `--quiet`, `--summary`, `--jsonl`, `--stdin`.
+`--input`, `--por`, `--delta_e`, `--grv` are **not** valid flags.
 
 ---
 
@@ -143,7 +148,7 @@ All workflows are in `.github/workflows/`.
 | `typecheck.yml` | push/PR | mypy only (Python 3.11) |
 | `nightly-collect-build-dataset.yml` | cron 00:30 JST | Collect Q&A, compute metrics, generate datasets |
 | `unified-ai-issue-to-pr.yml` | issue events | AI-powered issue → code → PR automation |
-| `secret-smoke.yml` | push | Security validation for secrets |
+| `secret-smoke.yml` | `workflow_dispatch` (manual) | Security validation for secrets |
 
 CI runs on Python 3.12. The shared `.github/actions/setup-deps/action.yml` installs all dependencies.
 
@@ -193,13 +198,15 @@ CI runs on Python 3.12. The shared `.github/actions/setup-deps/action.yml` insta
 ### `config.json` — Runtime thresholds
 ```json
 {
-  "POR_FIRE_THRESHOLD": 0.82,
+  "BASE_SCORE_THRESHOLD": 0.82,
   "DELTA_E_HIGH": 0.65,
+  "DELTA_E_LOW": 0.25,
   "ANOMALY_POR_THRESHOLD": 0.95,
   "ANOMALY_DELTA_E_THRESHOLD": 0.85,
   "DUPLICATE_THRESHOLD": 0.9
 }
 ```
+Note: `POR_FIRE_THRESHOLD` is **not** a `config.json` key — it is hardcoded in `core/metrics.py`.
 
 ### `config/grv.yaml` — GRV weights
 ```yaml
